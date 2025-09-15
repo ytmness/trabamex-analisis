@@ -1,0 +1,648 @@
+import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useToast } from '@/components/ui/use-toast';
+import supabase from '@/lib/customSupabaseClient.js';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Package,
+  Search,
+  Filter,
+  Download,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Calendar,
+  User,
+  BarChart3,
+  Loader2,
+  Plus,
+  RefreshCw,
+  FileText,
+  AlertCircle,
+  TrendingUp,
+  Users,
+  Box
+} from 'lucide-react';
+
+const AdminSuppliesRequestsPage = () => {
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // Estados principales
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    approvedToday: 0,
+    totalItems: 0
+  });
+  
+  // Estados de filtros
+  const [filters, setFilters] = useState({
+    status: 'all',
+    dateFrom: '',
+    dateTo: '',
+    userSearch: '',
+    supplyType: 'all'
+  });
+  
+  // Estados de paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [itemsPerPage] = useState(10);
+
+  // Opciones de filtros
+  const statusOptions = [
+    { value: 'all', label: 'Todos los Estados' },
+    { value: 'pending', label: 'Pendiente' },
+    { value: 'approved', label: 'Aprobada' },
+    { value: 'rejected', label: 'Rechazada' },
+    { value: 'completed', label: 'Completada' }
+  ];
+
+  const supplyTypeOptions = [
+    { value: 'all', label: 'Todos los Insumos' },
+    { value: 'Bolsas Rojas', label: 'Bolsas Rojas' },
+    { value: 'Bolsas Amarillas', label: 'Bolsas Amarillas' },
+    { value: 'Contenedores', label: 'Contenedores' },
+    { value: 'Etiquetas', label: 'Etiquetas' },
+    { value: 'Otros', label: 'Otros' }
+  ];
+
+  useEffect(() => {
+    fetchRequests();
+    fetchStats();
+  }, [filters, currentPage]);
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('supplies_requests')
+        .select(`
+          *,
+          supplies_request_items (*),
+          profiles:user_id (
+            id,
+            email,
+            full_name,
+            company_name
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      // Aplicar filtros
+      if (filters.status !== 'all') {
+        query = query.eq('status', filters.status);
+      }
+      
+      if (filters.dateFrom) {
+        query = query.gte('created_at', filters.dateFrom);
+      }
+      
+      if (filters.dateTo) {
+        query = query.lte('created_at', filters.dateTo);
+      }
+      
+      if (filters.userSearch) {
+        query = query.or(`profiles.email.ilike.%${filters.userSearch}%,profiles.full_name.ilike.%${filters.userSearch}%`);
+      }
+
+      // Paginación
+      const from = (currentPage - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+
+      if (error) throw error;
+
+      // Filtrar por tipo de insumo si es necesario
+      let filteredData = data;
+      if (filters.supplyType !== 'all') {
+        filteredData = data.filter(request => 
+          request.supplies_request_items.some(item => 
+            item.supply_name === filters.supplyType
+          )
+        );
+      }
+
+      setRequests(filteredData || []);
+      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
+
+    } catch (error) {
+      console.error('Error cargando solicitudes:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error al cargar solicitudes',
+        description: 'No se pudieron cargar las solicitudes de insumos',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      // Total de solicitudes
+      const { count: total } = await supabase
+        .from('supplies_requests')
+        .select('*', { count: 'exact', head: true });
+
+      // Solicitudes pendientes
+      const { count: pending } = await supabase
+        .from('supplies_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      // Solicitudes aprobadas hoy
+      const today = new Date().toISOString().split('T')[0];
+      const { count: approvedToday } = await supabase
+        .from('supplies_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'approved')
+        .gte('updated_at', today);
+
+      // Total de items
+      const { data: itemsData } = await supabase
+        .from('supplies_request_items')
+        .select('quantity');
+      
+      const totalItems = itemsData?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+
+      setStats({
+        total: total || 0,
+        pending: pending || 0,
+        approvedToday: approvedToday || 0,
+        totalItems: totalItems
+      });
+
+    } catch (error) {
+      console.error('Error cargando estadísticas:', error);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    const statusColors = {
+      'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'approved': 'bg-green-100 text-green-800 border-green-200',
+      'rejected': 'bg-red-100 text-red-800 border-red-200',
+      'completed': 'bg-blue-100 text-blue-800 border-blue-200'
+    };
+    return statusColors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+  };
+
+  const getStatusIcon = (status) => {
+    const statusIcons = {
+      'pending': Clock,
+      'approved': CheckCircle,
+      'rejected': XCircle,
+      'completed': Package
+    };
+    return statusIcons[status] || Clock;
+  };
+
+  const getStatusLabel = (status) => {
+    const statusLabels = {
+      'pending': 'Pendiente',
+      'approved': 'Aprobada',
+      'rejected': 'Rechazada',
+      'completed': 'Completada'
+    };
+    return statusLabels[status] || status;
+  };
+
+  const calculateTotalItems = (request) => {
+    return request.supplies_request_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+  };
+
+  const handleStatusChange = async (requestId, newStatus, adminNotes = '') => {
+    try {
+      const { error } = await supabase
+        .from('supplies_requests')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      // Registrar actividad
+      await supabase
+        .from('user_activities')
+        .insert({
+          user_id: user.id,
+          activity_type: 'supplies_request_status_change',
+          description: `Cambió estado de solicitud ${requestId} a ${newStatus}`,
+          metadata: { request_id: requestId, new_status: newStatus, admin_notes: adminNotes }
+        });
+
+      toast({
+        title: 'Estado actualizado',
+        description: `La solicitud ha sido ${getStatusLabel(newStatus).toLowerCase()}`,
+      });
+
+      fetchRequests();
+      fetchStats();
+
+    } catch (error) {
+      console.error('Error actualizando estado:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error al actualizar estado',
+        description: 'No se pudo cambiar el estado de la solicitud',
+      });
+    }
+  };
+
+  const exportToExcel = () => {
+    // Implementar exportación a Excel
+    toast({
+      title: 'Exportación iniciada',
+      description: 'El archivo se descargará en breve',
+    });
+  };
+
+  return (
+    <>
+      <Helmet>
+        <title>Administración de Solicitudes de Insumos - MIR</title>
+        <meta name="description" content="Panel de administración para gestionar solicitudes de insumos." />
+      </Helmet>
+      
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-red-200">
+          <div className="container mx-auto px-6 py-6">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="flex items-center justify-between"
+            >
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900">
+                  Solicitudes de Insumos
+                </h1>
+                <p className="mt-2 text-red-600 text-lg">Panel de administración</p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={exportToExcel}
+                  variant="outline"
+                  className="border-red-300 text-red-600 hover:bg-red-50"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+                <Button
+                  onClick={() => { fetchRequests(); fetchStats(); }}
+                  variant="outline"
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Actualizar
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        <div className="container mx-auto px-6 py-8">
+          {/* Estadísticas */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
+          >
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-red-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-red-600 text-sm font-medium">Total Solicitudes</p>
+                  <p className="text-3xl font-bold text-gray-800 mt-1">{stats.total}</p>
+                </div>
+                <div className="bg-red-50 p-3 rounded-full">
+                  <FileText className="h-8 w-8 text-red-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-yellow-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-yellow-600 text-sm font-medium">Pendientes</p>
+                  <p className="text-3xl font-bold text-gray-800 mt-1">{stats.pending}</p>
+                </div>
+                <div className="bg-yellow-50 p-3 rounded-full">
+                  <Clock className="h-8 w-8 text-yellow-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-green-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-600 text-sm font-medium">Aprobadas Hoy</p>
+                  <p className="text-3xl font-bold text-gray-800 mt-1">{stats.approvedToday}</p>
+                </div>
+                <div className="bg-green-50 p-3 rounded-full">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-600 text-sm font-medium">Total Items</p>
+                  <p className="text-3xl font-bold text-gray-800 mt-1">{stats.totalItems}</p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-full">
+                  <Box className="h-8 w-8 text-blue-600" />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Filtros */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="bg-white rounded-lg p-6 border border-red-200 shadow-sm mb-8"
+          >
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center">
+                <Filter className="h-5 w-5 mr-2 text-red-600"/>
+                Filtros de Búsqueda
+              </h2>
+              <p className="text-red-600">Filtrar solicitudes por diferentes criterios</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Estado */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({...filters, status: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  {statusOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Fecha Desde */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Desde</label>
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Fecha Hasta */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Hasta</label>
+                <input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Búsqueda de Usuario */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Usuario</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por email o nombre"
+                    value={filters.userSearch}
+                    onChange={(e) => setFilters({...filters, userSearch: e.target.value})}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Tipo de Insumo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Insumo</label>
+                <select
+                  value={filters.supplyType}
+                  onChange={(e) => setFilters({...filters, supplyType: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  {supplyTypeOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Tabla de Solicitudes */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="bg-white rounded-lg border border-red-200 shadow-sm overflow-hidden"
+          >
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-800">Solicitudes de Insumos</h2>
+            </div>
+            
+            {loading ? (
+              <div className="flex justify-center items-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ID Solicitud
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Usuario
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Fecha
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Estado
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Total Items
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Acciones
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {requests.map((request) => {
+                        const StatusIcon = getStatusIcon(request.status);
+                        return (
+                          <tr key={request.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                #{request.id.substring(0, 8)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-10 w-10">
+                                  <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
+                                    <User className="h-5 w-5 text-red-600" />
+                                  </div>
+                                </div>
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {request.profiles?.full_name || 'N/A'}
+                                  </div>profiles:user_id (
+                                  <div className="text-sm text-gray-500">
+                                    {request.profiles?.email || 'N/A'}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {new Date(request.created_at).toLocaleDateString('es-ES')}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {new Date(request.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge className={`${getStatusColor(request.status)} flex items-center w-fit`}>
+                                <StatusIcon className="h-3 w-3 mr-1" />
+                                {getStatusLabel(request.status)}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {calculateTotalItems(request)} items
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => navigate(`/mir/admin/supplies-requests/${request.id}`)}
+                                  className="border-red-300 text-red-600 hover:bg-red-50"
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Ver
+                                </Button>
+                                {request.status === 'pending' && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleStatusChange(request.id, 'approved')}
+                                      className="bg-green-600 hover:bg-green-700"
+                                    >
+                                      <CheckCircle className="h-4 w-4 mr-1" />
+                                      Aprobar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleStatusChange(request.id, 'rejected')}
+                                      className="border-red-300 text-red-600 hover:bg-red-50"
+                                    >
+                                      <XCircle className="h-4 w-4 mr-1" />
+                                      Rechazar
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Paginación */}
+                {totalPages > 1 && (
+                  <div className="px-6 py-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-700">
+                        Página {currentPage} de {totalPages}
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                          className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          Anterior
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          disabled={currentPage === totalPages}
+                          className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          Siguiente
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {!loading && requests.length === 0 && (
+              <div className="text-center py-20">
+                <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-gray-500 mb-4">No se encontraron solicitudes con los filtros aplicados.</p>
+                <Button
+                  onClick={() => setFilters({
+                    status: 'all',
+                    dateFrom: '',
+                    dateTo: '',
+                    userSearch: '',
+                    supplyType: 'all'
+                  })}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Limpiar Filtros
+                </Button>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default AdminSuppliesRequestsPage;
