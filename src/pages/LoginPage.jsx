@@ -59,7 +59,18 @@ const LoginPage = () => {
             const { error } = await signIn(email, password);
             if (error) {
                 console.error('Error de login:', error);
-                alert('Error en el login: ' + error.message);
+                
+                // Mensajes más específicos según el tipo de error
+                let errorMessage = error.message;
+                if (error.message.includes('Invalid login credentials')) {
+                    errorMessage = 'Credenciales inválidas. Verifica tu email y contraseña.';
+                } else if (error.message.includes('Email not confirmed')) {
+                    errorMessage = 'Tu email no ha sido confirmado. Revisa tu correo y haz clic en el enlace de verificación.';
+                } else if (error.message.includes('too many requests')) {
+                    errorMessage = 'Demasiados intentos. Espera unos minutos antes de intentar nuevamente.';
+                }
+                
+                alert('Error en el login: ' + errorMessage);
             } else {
                 console.log('Login exitoso, redirigiendo...');
                 // La redirección se manejará automáticamente en el useEffect

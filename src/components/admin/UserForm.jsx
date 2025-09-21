@@ -66,134 +66,53 @@ export const UserForm = ({ user, onSuccess, defaultRole }) => {
         onSuccess(profileData);
       }
     } else {
-      // Create new user profile (manual process)
+      // Crear nuevo usuario usando Edge Function
       try {
-        // Usar función RPC para crear usuario automáticamente
-        const { data: rpcData, error: rpcError } = await supabase.rpc('create_user_profile', {
-          p_full_name: fullName,
-          p_email: email,
-          p_phone: phone,
-          p_role: role
+        console.log('🔍 Invitando usuario:', { fullName, email, phone, role });
+        
+        // Obtener el ID del admin actual
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) {
+          toast({
+            variant: 'destructive',
+            title: 'Error de autenticación',
+            description: 'No se pudo obtener la información del administrador actual.',
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Llamar a la Edge Function para crear usuario
+        const { data, error } = await supabase.functions.invoke('invite-user', {
+          body: {
+            email: email,
+            full_name: fullName,
+            password: password,
+            role: role,
+            phone: phone || null,
+            company_name: null,
+            admin_user_id: currentUser.id
+          }
         });
 
-        console.log('🔍 RPC Response:', { rpcData, rpcError });
-        console.log('🔍 RPC Data Details:', JSON.stringify(rpcData, null, 2));
+        console.log('🔍 Edge Function Response:', { data, error });
 
-        if (!rpcError && rpcData && rpcData.success) {
-          // Función RPC funcionó correctamente
-          if (rpcData.user_id) {
-            // Usuario realmente creado
-            toast({ 
-              title: 'Éxito', 
-              description: 'Usuario creado correctamente.' 
-            });
-            onSuccess({
-              id: rpcData.user_id,
-              full_name: fullName,
-              email: email,
-              phone: phone,
-              role: role
-            });
-          } else {
-            // Solo validación exitosa, mostrar instrucciones
-            const instructions = `✅ VALIDACIÓN EXITOSA
-
-📋 INFORMACIÓN DEL USUARIO:
-• Nombre: ${fullName}
-• Email: ${email}
-• Teléfono: ${phone}
-• Rol: ${role === 'user' ? 'Cliente' : role === 'operator' ? 'Operador' : 'Administrador'}
-
-⚠️ PASO FINAL REQUERIDO:
-Para completar la creación, ve a tu Dashboard de Supabase:
-1. Authentication → Users → Add User
-2. Email: ${email}
-3. Password: [GENERA_UNA_CONTRASEÑA_TEMPORAL]
-4. Marca "Auto-confirm email"
-5. Crea el usuario
-
-🔐 CREDENCIALES PARA ENVIAR AL USUARIO:
-Email: ${email}
-Password: [LA_CONTRASEÑA_QUE_GENERASTE]
-URL de login: ${window.location.origin}/login
-
-✅ Los datos han sido validados. Solo falta crear el usuario en Auth.`;
-
-            // Copiar al portapapeles
-            try {
-              await navigator.clipboard.writeText(instructions);
-              toast({
-                title: 'Validación exitosa',
-                description: 'Las instrucciones se han copiado al portapapeles.',
-              });
-            } catch (clipboardError) {
-              console.log('No se pudo copiar al portapapeles');
-              toast({
-                title: 'Validación exitosa',
-                description: 'Revisa la consola para ver las instrucciones completas.',
-              });
-            }
-
-            // Mostrar alert con instrucciones
-            alert(instructions);
-
-            // Simular éxito para cerrar el modal
-            onSuccess({
-              full_name: fullName,
-              email: email,
-              phone: phone,
-              role: role
-            });
-          }
+        if (error) {
+          console.error('❌ Error invitando usuario:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Error al invitar usuario',
+            description: error.message,
+          });
         } else {
-          // Función RPC no existe o falló, mostrar instrucciones manuales
-          const instructions = `🎉 PREPARACIÓN PARA CREAR USUARIO
-
-📋 INFORMACIÓN DEL USUARIO:
-• Nombre: ${fullName}
-• Email: ${email}
-• Teléfono: ${phone}
-• Rol: ${role === 'user' ? 'Cliente' : role === 'operator' ? 'Operador' : 'Administrador'}
-
-⚠️ PASOS REQUERIDOS:
-1️⃣ Ve a tu Dashboard de Supabase:
-   https://supabase.com/dashboard/project/[TU-PROJECT-ID]
-
-2️⃣ Authentication → Users → Add User:
-   • Email: ${email}
-   • Password: [GENERA_UNA_CONTRASEÑA_TEMPORAL]
-   • Marca "Auto-confirm email"
-   • Crea el usuario
-
-3️⃣ Una vez creado el usuario, regresa aquí y usa el botón "Actualizar" para sincronizar los datos.
-
-🔐 CREDENCIALES PARA ENVIAR AL USUARIO:
-Email: ${email}
-Password: [LA_CONTRASEÑA_QUE_GENERASTE]
-URL de login: ${window.location.origin}/login
-
-✅ Después de crear el usuario en Auth, el perfil se sincronizará automáticamente.`;
-
-          // Copiar al portapapeles
-          try {
-            await navigator.clipboard.writeText(instructions);
-            toast({
-              title: 'Instrucciones preparadas',
-              description: 'Las instrucciones se han copiado al portapapeles.',
-            });
-          } catch (clipboardError) {
-            console.log('No se pudo copiar al portapapeles');
-            toast({
-              title: 'Instrucciones preparadas',
-              description: 'Revisa la consola para ver las instrucciones completas.',
-            });
-          }
-
-          // Mostrar alert con instrucciones
-          alert(instructions);
-
-          // Simular éxito para cerrar el modal
+          console.log('✅ Usuario invitado:', data);
+          toast({
+            title: 'Usuario creado exitosamente',
+            description: `Usuario ${email} creado. Se ha enviado un email de verificación. El usuario debe confirmar su email antes de poder iniciar sesión.`,
+          });
+          
           onSuccess({
+            id: data.user_id,
             full_name: fullName,
             email: email,
             phone: phone,
@@ -201,11 +120,11 @@ URL de login: ${window.location.origin}/login
           });
         }
       } catch (error) {
-        console.error('Error preparing user creation:', error);
+        console.error('❌ Error inesperado:', error);
         toast({
           variant: 'destructive',
-          title: 'Error al preparar creación de usuario',
-          description: error.message || 'Error desconocido',
+          title: 'Error',
+          description: 'Error inesperado al invitar usuario',
         });
       }
     }

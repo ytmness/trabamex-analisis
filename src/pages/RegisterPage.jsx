@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -19,13 +19,35 @@ const RegisterPage = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        const { error } = await signUp(email, password, fullName);
-        setLoading(false);
-        if (!error) {
-            navigate('/login');
+        
+        try {
+            const { data, error } = await signUp(email, password, fullName);
+            setLoading(false);
+            
+            if (error) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Error al registrar',
+                    description: error.message,
+                });
+            } else {
+                toast({
+                    title: '¡Registro exitoso!',
+                    description: 'Te hemos enviado un correo de verificación. Por favor confirma tu email antes de iniciar sesión.',
+                });
+                navigate('/login');
+            }
+        } catch (error) {
+            setLoading(false);
+            toast({
+                variant: 'destructive',
+                title: 'Error inesperado',
+                description: 'Ocurrió un error inesperado durante el registro.',
+            });
         }
     };
 

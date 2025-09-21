@@ -146,31 +146,47 @@ const AdminClientsPage = () => {
 
   const handleCreateUser = async (userData) => {
     try {
-      console.log('🔍 Creando perfil de usuario:', userData);
+      console.log('🔍 Invitando usuario:', userData);
       
-      // Crear solo el perfil en la tabla profiles
-      const { data: profileData, error: profileError } = await supabase.rpc('create_user_profile', {
-        p_email: userData.email,
-        p_full_name: userData.full_name,
-        p_role: userData.role,
-        p_password: userData.password
-      });
-
-      if (profileError) {
-        console.error('❌ Error creando perfil:', profileError);
+      // Obtener el ID del admin actual
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
         toast({
           variant: 'destructive',
-          title: 'Error al crear perfil',
-          description: profileError.message,
+          title: 'Error de autenticación',
+          description: 'No se pudo obtener la información del administrador actual.',
         });
         return false;
       }
 
-      console.log('✅ Perfil creado:', profileData);
+      // Llamar a la Edge Function para crear usuario
+      const { data, error } = await supabase.functions.invoke('invite-user', {
+        body: {
+          email: userData.email,
+          full_name: userData.full_name,
+          password: userData.password,
+          role: userData.role,
+          phone: userData.phone,
+          company_name: userData.company_name,
+          admin_user_id: currentUser.id
+        }
+      });
+
+      if (error) {
+        console.error('❌ Error invitando usuario:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error al invitar usuario',
+          description: error.message,
+        });
+        return false;
+      }
+
+      console.log('✅ Usuario invitado:', data);
 
       toast({
-        title: 'Perfil creado exitosamente',
-        description: `El perfil de ${userData.email} ha sido creado. El usuario debe registrarse normalmente para activar su cuenta.`,
+        title: 'Usuario creado exitosamente',
+        description: `Usuario ${userData.email} creado. Se ha enviado un email de verificación. El usuario debe confirmar su email antes de poder iniciar sesión.`,
       });
       
       fetchClients();
@@ -180,7 +196,7 @@ const AdminClientsPage = () => {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Error inesperado al crear perfil',
+        description: 'Error inesperado al invitar usuario',
       });
       return false;
     }
@@ -464,16 +480,18 @@ const AdminClientsPage = () => {
               const userData = {
                 email: formData.get('email')?.trim(),
                 full_name: formData.get('full_name')?.trim(),
+                password: formData.get('password')?.trim(),
                 role: formData.get('role'),
-                password: formData.get('password')?.trim() || null
+                phone: formData.get('phone')?.trim() || null,
+                company_name: formData.get('company_name')?.trim() || null
               };
               
               // Validaciones básicas
-              if (!userData.email || !userData.full_name) {
+              if (!userData.email || !userData.full_name || !userData.password) {
                 toast({
                   variant: 'destructive',
                   title: 'Error de validación',
-                  description: 'Email y nombre completo son obligatorios',
+                  description: 'Email, nombre completo y contraseña son obligatorios',
                 });
                 return;
               }
@@ -532,14 +550,39 @@ const AdminClientsPage = () => {
                   <Input
                     name="password"
                     type="password"
-                    placeholder={selectedUser ? "Dejar vacío para mantener actual" : "Opcional - para registro futuro"}
+                    placeholder={selectedUser ? "Dejar vacío para mantener actual" : "Contraseña para el usuario"}
+                    required={!selectedUser}
                     className="w-full"
                   />
-                  {!selectedUser && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      El usuario deberá registrarse normalmente para activar su cuenta
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    El usuario deberá verificar su email antes de poder iniciar sesión
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Teléfono (Opcional)
+                  </label>
+                  <Input
+                    name="phone"
+                    type="tel"
+                    placeholder="Número de teléfono"
+                    defaultValue={selectedUser?.phone || ''}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Empresa (Opcional)
+                  </label>
+                  <Input
+                    name="company_name"
+                    type="text"
+                    placeholder="Nombre de la empresa"
+                    defaultValue={selectedUser?.company_name || ''}
+                    className="w-full"
+                  />
                 </div>
               </div>
               
