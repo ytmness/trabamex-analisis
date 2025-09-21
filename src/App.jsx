@@ -46,6 +46,7 @@ import AdminSuppliesRequestsPage from './pages/admin/AdminSuppliesRequestsPage';
 import AdminSuppliesRequestDetailPage from './pages/admin/AdminSuppliesRequestDetailPage';
 import AdminPlanManagementPage from './pages/admin/AdminPlanManagementPage';
 import UserIncidentsPage from './pages/UserReportsPage';
+import NotificationsPage from './pages/NotificationsPage';
 import { useAuth } from './contexts/SupabaseAuthContext';
 
 // Componente que renderiza el dashboard correcto según el rol
@@ -109,6 +110,7 @@ function App() {
           <Route path="manifiestos" element={<ProtectedRoute allowedRoles={['user']}><PastCollectionsPage /></ProtectedRoute>} />
           <Route path="solicitar-insumos" element={<ProtectedRoute allowedRoles={['user']}><SuppliesRequestPage /></ProtectedRoute>} />
           <Route path="incidencias" element={<ProtectedRoute allowedRoles={['user']}><UserIncidentsPage /></ProtectedRoute>} />
+          <Route path="notificaciones" element={<ProtectedRoute allowedRoles={['user']}><NotificationsPage /></ProtectedRoute>} />
 
           {/* Operator Routes */}
           <Route path="rutas" element={<ProtectedRoute allowedRoles={['operator']}><OperatorRoutesPage /></ProtectedRoute>} />
@@ -127,7 +129,7 @@ function App() {
           <Route path="ordenes" element={<ProtectedRoute allowedRoles={['admin']}><AdminOrdersPage /></ProtectedRoute>} />
           <Route path="rutas" element={<ProtectedRoute allowedRoles={['admin']}><AdminRoutesPage /></ProtectedRoute>} />
           <Route path="planes-admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPlansPage /></ProtectedRoute>} />
-          <Route path="incidencias" element={<ProtectedRoute allowedRoles={['admin']}><AdminIncidentsPage /></ProtectedRoute>} />
+          <Route path="gestion-incidencias" element={<ProtectedRoute allowedRoles={['admin']}><AdminIncidentsPage /></ProtectedRoute>} />
           <Route path="tratamientos" element={<ProtectedRoute allowedRoles={['admin']}><AdminTreatmentsPage /></ProtectedRoute>} />
           <Route path="certificados" element={<ProtectedRoute allowedRoles={['admin']}><AdminCertificatesPage /></ProtectedRoute>} />
           <Route path="supplies-requests" element={<ProtectedRoute allowedRoles={['admin']}><AdminSuppliesRequestsPage /></ProtectedRoute>} />

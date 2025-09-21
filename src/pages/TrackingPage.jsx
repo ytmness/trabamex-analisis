@@ -645,37 +645,18 @@ const TrackingPage = () => {
         <div className="mb-6 flex justify-between items-center">
           <Button 
             variant="outline" 
-            onClick={() => window.location.href = '/mir/operator'}
+            onClick={() => {
+              const dashboardUrl = profile?.role === 'admin' ? '/mir/admin' :
+                                  profile?.role === 'operator' ? '/mir/operator' :
+                                  '/mir/user';
+              window.location.href = dashboardUrl;
+            }}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="h-4 w-4" />
             Regresar al Dashboard
           </Button>
           
-          {/* Botón de prueba para adjuntar archivo */}
-          {(profile?.role === 'operator' || profile?.role === 'admin') && (
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                console.log('🧪 Botón de prueba clickeado');
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*,.pdf,.doc,.docx';
-                input.onchange = (e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    console.log('🧪 Archivo de prueba seleccionado:', file.name);
-                    handleFileUpload('TEST_STEP', file);
-                  }
-                };
-                input.click();
-              }}
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-900"
-            >
-              <Upload className="h-4 w-4" />
-              Prueba Adjuntar
-            </Button>
-          )}
         </div>
 
         <motion.div

@@ -38,8 +38,8 @@ const RequestPage = () => {
         notes: ''
     });
     
-    // Estado de las claves seleccionadas
-    const [selectedKeys, setSelectedKeys] = useState([]);
+    // Estado de la descripción del residuo
+    const [residueDescription, setResidueDescription] = useState('');
     
     // Estado de archivos
     const [files, setFiles] = useState([]);
@@ -60,7 +60,7 @@ const RequestPage = () => {
         if (!formData.origin) newErrors.origin = 'Debes especificar la procedencia';
         if (!formData.date) newErrors.date = 'Debes seleccionar una fecha';
         if (!formData.packaging) newErrors.packaging = 'Debes especificar el tipo de envasado';
-        if (selectedKeys.length === 0) newErrors.keys = 'Debes seleccionar al menos una clave';
+        if (!residueDescription.trim()) newErrors.residueDescription = 'Debes describir el residuo';
         
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -75,18 +75,12 @@ const RequestPage = () => {
         }
     };
 
-    // Manejar selección de claves - CORREGIDO
-    const handleKeyToggle = (key) => {
-        setSelectedKeys(prev => {
-            if (prev.includes(key)) {
-                return prev.filter(k => k !== key);
-            } else {
-                return [...prev, key]; // ✅ CORREGIDO: Ahora agrega la clave
-            }
-        });
-        // Limpiar error de claves
-        if (errors.keys) {
-            setErrors(prev => ({ ...prev, keys: '' }));
+    // Manejar descripción del residuo
+    const handleDescriptionChange = (value) => {
+        setResidueDescription(value);
+        // Limpiar error de descripción
+        if (errors.residueDescription) {
+            setErrors(prev => ({ ...prev, residueDescription: '' }));
         }
     };
 
@@ -125,7 +119,7 @@ const RequestPage = () => {
         setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    // Subir archivos a Supabase Storage
+    // Subir archivos a Supabase Storage (opcional)
     const uploadFiles = async () => {
         if (files.length === 0) return [];
         
@@ -142,7 +136,14 @@ const RequestPage = () => {
                     .upload(filePath, file);
                 
                 if (uploadError) {
-                    throw new Error(`Error al subir ${file.name}: ${uploadError.message}`);
+                    console.warn(`No se pudo subir ${file.name}:`, uploadError.message);
+                    // Continuar sin el archivo en lugar de fallar completamente
+                    toast({
+                        title: "Archivo no subido",
+                        description: `${file.name} no se pudo subir, pero la solicitud continuará`,
+                        variant: "default"
+                    });
+                    continue;
                 }
                 
                 // Obtener URL pública
@@ -154,7 +155,11 @@ const RequestPage = () => {
             }
         } catch (error) {
             console.error('Error uploading files:', error);
-            throw error;
+            toast({
+                title: "Error en archivos",
+                description: "No se pudieron subir los archivos, pero la solicitud continuará",
+                variant: "default"
+            });
         } finally {
             setUploading(false);
         }
@@ -176,7 +181,7 @@ const RequestPage = () => {
             p_scheduled_date: formData.date,
             p_packaging: formData.packaging,
             p_notes: formData.notes,
-            p_waste_keys: selectedKeys,
+            p_waste_keys: [residueDescription],
             p_evidence_files: fileUrls
         });
         
@@ -189,7 +194,7 @@ const RequestPage = () => {
             p_scheduled_date: formData.date,
             p_packaging: formData.packaging,
             p_notes: formData.notes,
-            p_waste_keys: selectedKeys,
+            p_waste_keys: [residueDescription],
             p_evidence_files: fileUrls
         });
         
@@ -219,7 +224,7 @@ const RequestPage = () => {
         console.log('🚀 INICIANDO ENVÍO DE SOLICITUD...');
         console.log('📡 URL de Supabase (RequestPage):', supabase.supabaseUrl);
         console.log('📋 Datos del formulario:', formData);
-        console.log('🔑 Claves seleccionadas:', selectedKeys);
+        console.log('📝 Descripción del residuo:', residueDescription);
         console.log('📁 Archivos seleccionados:', files);
         console.log('👤 Usuario actual:', user);
         
@@ -237,10 +242,16 @@ const RequestPage = () => {
         setSubmitting(true);
         
         try {
-            // 1. Subir archivos
+            // 1. Subir archivos (opcional)
             console.log('📤 Subiendo archivos...');
-            const fileUrls = await uploadFiles();
-            console.log('✅ Archivos subidos:', fileUrls);
+            let fileUrls = [];
+            try {
+                fileUrls = await uploadFiles();
+                console.log('✅ Archivos subidos:', fileUrls);
+            } catch (fileError) {
+                console.warn('⚠️ Error en archivos, continuando sin ellos:', fileError);
+                fileUrls = [];
+            }
             
             // 2. Crear orden de servicio
             console.log('📝 Creando orden de servicio...');
@@ -253,7 +264,7 @@ const RequestPage = () => {
                 p_scheduled_date: formData.date,
                 p_packaging: formData.packaging,
                 p_notes: formData.notes,
-                p_waste_keys: selectedKeys,
+                p_waste_keys: [residueDescription],
                 p_evidence_files: fileUrls
             });
             
@@ -283,7 +294,7 @@ const RequestPage = () => {
                 packaging: '',
                 notes: ''
             });
-            setSelectedKeys([]);
+            setResidueDescription('');
             setFiles([]);
             
         } catch (error) {
@@ -402,20 +413,16 @@ const RequestPage = () => {
                         </div>
 
                         <div className="mt-6">
-                            <Label>Clave *</Label>
-                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 mt-2 p-4 border rounded-md">
-                                {wasteKeys.map(key => (
-                                    <div key={key} className="flex items-center space-x-2">
-                                        <Checkbox 
-                                            id={key} 
-                                            checked={selectedKeys.includes(key)}
-                                            onCheckedChange={() => handleKeyToggle(key)}
-                                        />
-                                        <Label htmlFor={key} className="font-normal">{key}</Label>
-                                    </div>
-                                ))}
-                            </div>
-                            {errors.keys && <p className="text-red-500 text-sm mt-1">{errors.keys}</p>}
+                            <Label htmlFor="residue-description">Descripción de residuo *</Label>
+                            <Textarea 
+                                id="residue-description"
+                                placeholder="Describe detalladamente el residuo a recolectar (ej: jeringas usadas, medicamentos vencidos, material quirúrgico desechable, etc.)"
+                                rows={3}
+                                value={residueDescription}
+                                onChange={(e) => handleDescriptionChange(e.target.value)}
+                                className={errors.residueDescription ? 'border-red-500' : ''}
+                            />
+                            {errors.residueDescription && <p className="text-red-500 text-sm mt-1">{errors.residueDescription}</p>}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">

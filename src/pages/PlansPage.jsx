@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, ArrowLeft } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { getPlanStats } from '@/utils/planCalculations';
 
-const CircularProgress = ({ percentage }) => {
+const CircularProgress = ({ percentage, usage, limit }) => {
   const radius = 80;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
@@ -40,8 +42,8 @@ const CircularProgress = ({ percentage }) => {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-bold text-gray-800">65kg</span>
-        <span className="text-sm text-gray-500">de 100kg</span>
+        <span className="text-3xl font-bold text-gray-800">{usage}kg</span>
+        <span className="text-sm text-gray-500">de {limit}kg</span>
         <span className="text-sm font-semibold text-gray-600 mt-1">{percentage}% usado</span>
       </div>
     </div>
@@ -82,6 +84,41 @@ const benefits = [
 
 const PlansPage = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [planStats, setPlanStats] = useState({
+    hasPlan: false,
+    usage: 0,
+    limit: 0,
+    percentage: 0,
+    planName: 'Sin plan asignado',
+    remainingWeight: 0,
+    monthlyPrice: 0,
+    isOverLimit: false
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPlanStats = async () => {
+      if (!user) return;
+      
+      setLoading(true);
+      try {
+        const stats = await getPlanStats(user.id);
+        setPlanStats(stats);
+      } catch (error) {
+        console.error('Error loading plan stats:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error al cargar datos del plan',
+          description: 'No se pudieron cargar las estadísticas del plan',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPlanStats();
+  }, [user, toast]);
 
   const handleNotImplemented = () => {
     toast({
@@ -115,22 +152,51 @@ const PlansPage = () => {
           transition={{ duration: 0.5 }}
           className="bg-red-50 p-8 rounded-xl border border-red-100 mb-12"
         >
-          <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">Plan Actual: 0-100kg</h1>
-          <p className="text-center text-gray-600 mb-2">$3,200/mes + excedentes $17.00 MXN/Kg</p>
-          <div className="flex flex-col md:flex-row items-center justify-around gap-8 mt-8">
-            <CircularProgress percentage={65} />
-            <div>
-              <h3 className="text-lg font-bold text-gray-800 mb-4">Beneficios incluidos</h3>
-              <ul className="space-y-3">
-                {benefits.map((benefit, index) => (
-                    <li key={index} className="flex items-center gap-3">
-                        <CheckCircle className="h-5 w-5 text-red-600" />
-                        <span className="text-gray-700">{benefit}</span>
-                    </li>
-                ))}
-              </ul>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+              <span className="ml-2 text-gray-600">Cargando datos del plan...</span>
             </div>
-          </div>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">
+                Plan Actual: {planStats.hasPlan ? planStats.planName : 'Sin plan asignado'}
+              </h1>
+              <p className="text-center text-gray-600 mb-2">
+                {planStats.hasPlan ? `$${planStats.monthlyPrice?.toLocaleString()}/mes` : 'Sin precio asignado'}
+              </p>
+              <div className="flex flex-col md:flex-row items-center justify-around gap-8 mt-8">
+                <CircularProgress 
+                  percentage={planStats.percentage} 
+                  usage={planStats.usage}
+                  limit={planStats.limit}
+                />
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Beneficios incluidos</h3>
+                  <ul className="space-y-3">
+                    {benefits.map((benefit, index) => (
+                        <li key={index} className="flex items-center gap-3">
+                            <CheckCircle className="h-5 w-5 text-red-600" />
+                            <span className="text-gray-700">{benefit}</span>
+                        </li>
+                    ))}
+                  </ul>
+                  {planStats.hasPlan && (
+                    <div className="mt-4 p-3 bg-white rounded-lg border">
+                      <p className="text-sm text-gray-600">
+                        <strong>Peso restante:</strong> {planStats.remainingWeight}kg
+                      </p>
+                      {planStats.isOverLimit && (
+                        <p className="text-sm text-red-600 font-medium mt-1">
+                          ⚠️ Has excedido el límite de tu plan
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </motion.div>
 
         <motion.div

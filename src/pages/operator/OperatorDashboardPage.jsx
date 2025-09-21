@@ -145,10 +145,10 @@ const OperatorDashboardPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-600 via-green-800 to-black flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-green-400 mx-auto mb-4" />
-          <p className="text-white text-lg">Cargando dashboard operativo...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-red-600 mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">Cargando dashboard operativo...</p>
         </div>
       </div>
     );
@@ -161,10 +161,10 @@ const OperatorDashboardPage = () => {
         <meta name="description" content="Dashboard del operador para gestionar rutas y cambiar estados de órdenes." />
       </Helmet>
       
-      <div className="min-h-screen bg-gradient-to-br from-green-600 via-green-800 to-black text-white">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         {/* Header */}
-        <div className="bg-black/50 backdrop-blur-sm border-b border-green-600">
-          <div className="container mx-auto px-6 py-6">
+        <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-xl p-8 text-white shadow-lg mb-8">
+          <div className="container mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -172,19 +172,19 @@ const OperatorDashboardPage = () => {
               className="flex items-center justify-between"
             >
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-green-200 bg-clip-text text-transparent">
-                  {operatorFunctions.title}
+                <h1 className="text-4xl font-bold">
+                  ¡Hola, {profile?.full_name || 'Operador'}!
                 </h1>
-                <p className="mt-2 text-green-100 text-lg">{operatorFunctions.subtitle}</p>
+                <p className="mt-2 text-red-100 text-lg">Gestiona rutas y estados de órdenes</p>
               </div>
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-3 bg-green-600/50 px-4 py-2 rounded-full border border-green-500">
-                  <Truck className="h-6 w-6 text-green-200" />
+                <div className="flex items-center space-x-3 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
+                  <Truck className="h-6 w-6 text-red-200" />
                   <span className="text-white font-semibold text-sm">OPERADOR</span>
                 </div>
                 <button
                   onClick={signOut}
-                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors backdrop-blur-sm"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Cerrar Sesión</span>
@@ -194,48 +194,54 @@ const OperatorDashboardPage = () => {
           </div>
         </div>
 
-        <div className="container mx-auto px-6 py-8">
-          {/* Resumen de Actividad */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Estadísticas principales */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
           >
-            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 shadow-lg border border-blue-500/20">
+            {/* Rutas Asignadas */}
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm font-medium">Rutas Asignadas</p>
-                  <div className="text-3xl font-bold text-white mt-1">{routes?.length || 0}</div>
+                  <p className="text-sm font-medium text-gray-600">Rutas Asignadas</p>
+                  <p className="text-2xl font-bold text-gray-900">{routes?.length || 0}</p>
+                  <p className="text-xs text-gray-500">Total asignadas</p>
                 </div>
-                <div className="bg-blue-500/20 p-3 rounded-full">
-                  <Truck className="h-8 w-8 text-blue-200" />
+                <div className="bg-red-100 p-3 rounded-lg">
+                  <Truck className="h-6 w-6 text-red-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-yellow-600 to-yellow-700 rounded-xl p-6 shadow-lg border border-yellow-500/20">
+            {/* Órdenes Pendientes */}
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-yellow-100 text-sm font-medium">Órdenes Pendientes</p>
-                  <div className="text-3xl font-bold text-white mt-1">{pendingOrders?.length || 0}</div>
+                  <p className="text-sm font-medium text-gray-600">Órdenes Pendientes</p>
+                  <p className="text-2xl font-bold text-gray-900">{pendingOrders?.length || 0}</p>
+                  <p className="text-xs text-gray-500">Por procesar</p>
                 </div>
-                <div className="bg-yellow-500/20 p-3 rounded-full">
-                  <AlertCircle className="h-8 w-8 text-yellow-200" />
+                <div className="bg-yellow-100 p-3 rounded-lg">
+                  <AlertCircle className="h-6 w-6 text-yellow-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-6 shadow-lg border border-green-500/20">
+            {/* Rutas Activas */}
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-sm font-medium">Rutas Activas</p>
-                  <div className="text-3xl font-bold text-white mt-1">
+                  <p className="text-sm font-medium text-gray-600">Rutas Activas</p>
+                  <p className="text-2xl font-bold text-gray-900">
                     {routes?.filter(r => r?.status === 'EN_PROCESO')?.length || 0}
-                  </div>
+                  </p>
+                  <p className="text-xs text-gray-500">En proceso</p>
                 </div>
-                <div className="bg-green-500/20 p-3 rounded-full">
-                  <Play className="h-8 w-8 text-green-200" />
+                <div className="bg-green-100 p-3 rounded-lg">
+                  <Play className="h-6 w-6 text-green-600" />
                 </div>
               </div>
             </div>
@@ -248,22 +254,22 @@ const OperatorDashboardPage = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="mb-8"
           >
-            <div className="bg-black/50 backdrop-blur-sm rounded-xl p-6 border border-green-600">
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-white mb-2">Funciones del Operador</h2>
-                <p className="text-green-200">Acciones que puedes realizar en el sistema</p>
+                <h2 className="text-xl font-bold text-gray-900">Funciones del Operador</h2>
+                <p className="text-gray-600">Acciones que puedes realizar en el sistema</p>
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {operatorFunctions.functions.map((func, index) => (
                   <Link key={index} to={func.route} className="group block">
-                    <div className={`w-full bg-gradient-to-br from-${func.color}-600 to-${func.color}-700 hover:from-${func.color}-500 hover:to-${func.color}-600 rounded-lg p-6 text-center transition-all duration-200 transform hover:scale-105 border border-${func.color}-500/20`}>
-                      {func.icon === 'Map' && <Map className="h-8 w-8 text-green-200 mx-auto mb-3 group-hover:scale-110 transition-transform" />}
-                      {func.icon === 'Package' && <Package className="h-8 w-8 text-yellow-200 mx-auto mb-3 group-hover:scale-110 transition-transform" />}
-                      {func.icon === 'AlertTriangle' && <AlertTriangle className="h-8 w-8 text-red-200 mx-auto mb-3 group-hover:scale-110 transition-transform" />}
-                      {func.icon === 'CheckSquare' && <CheckSquare className="h-8 w-8 text-blue-200 mx-auto mb-3 group-hover:scale-110 transition-transform" />}
-                      {func.icon === 'Clock' && <Clock className="h-8 w-8 text-gray-200 mx-auto mb-3 group-hover:scale-110 transition-transform" />}
-                      <span className="text-white font-medium text-sm">{func.name}</span>
+                    <div className="w-full bg-gradient-to-br from-gray-50 to-gray-100 hover:from-red-50 hover:to-red-100 rounded-xl p-6 text-center transition-all duration-300 hover:shadow-lg hover:scale-105 border border-gray-200 hover:border-red-200">
+                      {func.icon === 'Map' && <Map className="h-6 w-6 text-gray-600 group-hover:text-red-600 mx-auto mb-3 group-hover:scale-110 transition-transform" />}
+                      {func.icon === 'Package' && <Package className="h-6 w-6 text-gray-600 group-hover:text-red-600 mx-auto mb-3 group-hover:scale-110 transition-transform" />}
+                      {func.icon === 'AlertTriangle' && <AlertTriangle className="h-6 w-6 text-gray-600 group-hover:text-red-600 mx-auto mb-3 group-hover:scale-110 transition-transform" />}
+                      {func.icon === 'CheckSquare' && <CheckSquare className="h-6 w-6 text-gray-600 group-hover:text-red-600 mx-auto mb-3 group-hover:scale-110 transition-transform" />}
+                      {func.icon === 'Clock' && <Clock className="h-6 w-6 text-gray-600 group-hover:text-red-600 mx-auto mb-3 group-hover:scale-110 transition-transform" />}
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-red-700">{func.name}</span>
                     </div>
                   </Link>
                 ))}
@@ -278,10 +284,10 @@ const OperatorDashboardPage = () => {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="mb-8"
           >
-            <div className="bg-black/50 backdrop-blur-sm rounded-xl p-6 border border-green-600">
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-white mb-2">Mis Rutas Asignadas</h2>
-                <p className="text-green-200">Gestiona las rutas que tienes asignadas</p>
+                <h2 className="text-xl font-bold text-gray-900">Mis Rutas Asignadas</h2>
+                <p className="text-gray-600">Gestiona las rutas que tienes asignadas</p>
               </div>
               
               {routes?.length > 0 ? (
@@ -292,39 +298,41 @@ const OperatorDashboardPage = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="bg-green-900/30 rounded-lg p-4 border border-green-600/50"
+                      className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                          <Map className="h-5 w-5 text-green-400" />
+                          <div className="bg-red-100 p-2 rounded-lg">
+                            <Map className="h-5 w-5 text-red-600" />
+                          </div>
                           <div>
-                            <div className="font-medium text-white">
+                            <div className="font-semibold text-gray-900">
                               Ruta del {format(new Date(route.created_at), 'EEEE, dd LLLL', { locale: es })}
                             </div>
-                            <div className="text-sm text-green-200">
+                            <div className="text-sm text-gray-600">
                               ID: {route.id.substring(0,8)} • {route.stops} parada(s)
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center space-x-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            route.status === 'EN_PROCESO' ? 'bg-green-100 text-green-800' :
-                            route.status === 'PENDIENTE' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            route.status === 'EN_PROCESO' ? 'bg-green-100 text-green-800 border border-green-200' :
+                            route.status === 'PENDIENTE' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                            'bg-gray-100 text-gray-800 border border-gray-200'
                           }`}>
                             {route.status || 'Planeada'}
                           </span>
                           {route.status === 'PENDIENTE' && (
                             <button
                               onClick={() => approveRoute(route.id)}
-                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm transition-colors"
+                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm transition-colors"
                             >
                               Aprobar
                             </button>
                           )}
                           <Link 
                             to={`/mir/operator/route/${route.id}`}
-                            className="text-blue-400 border border-blue-500 hover:bg-blue-500 hover:text-white px-3 py-1 rounded-md text-sm transition-colors"
+                            className="text-red-600 border border-red-500 hover:bg-red-500 hover:text-white px-3 py-1 rounded-md text-sm transition-colors"
                           >
                             Ver Detalles
                           </Link>
@@ -335,9 +343,11 @@ const OperatorDashboardPage = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <Truck className="mx-auto h-12 w-12 text-green-400" />
-                  <h3 className="mt-2 text-sm font-medium text-white">No hay rutas asignadas</h3>
-                  <p className="mt-1 text-sm text-green-200">Contacta a tu administrador para recibir asignaciones.</p>
+                  <div className="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <Truck className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-lg">No hay rutas asignadas</p>
+                  <p className="text-gray-400 text-sm">Contacta a tu administrador para recibir asignaciones.</p>
                 </div>
               )}
             </div>
@@ -350,10 +360,10 @@ const OperatorDashboardPage = () => {
             transition={{ duration: 0.5, delay: 0.4 }}
             className="mb-8"
           >
-            <div className="bg-black/50 backdrop-blur-sm rounded-xl p-6 border border-green-600">
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-white mb-2">Órdenes Pendientes</h2>
-                <p className="text-green-200">Cambia el estado de las órdenes según procedas</p>
+                <h2 className="text-xl font-bold text-gray-900">Órdenes Pendientes</h2>
+                <p className="text-gray-600">Cambia el estado de las órdenes según procedas</p>
               </div>
               
               {pendingOrders?.length > 0 ? (
@@ -364,18 +374,20 @@ const OperatorDashboardPage = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="bg-green-900/30 rounded-lg p-4 border border-green-600/50"
+                      className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                          <Package className="h-5 w-5 text-green-400" />
+                          <div className="bg-red-100 p-2 rounded-lg">
+                            <Package className="h-5 w-5 text-red-600" />
+                          </div>
                           <div className="flex-1">
-                            <div className="font-medium text-white">Orden #{order.id.substring(0,8)}</div>
-                            <div className="text-sm text-green-200">
+                            <div className="font-semibold text-gray-900">Orden #{order.id.substring(0,8)}</div>
+                            <div className="text-sm text-gray-600">
                               {order.customer?.full_name || order.client_name || 'Cliente'} • {format(new Date(order.created_at), 'dd/MM/yyyy')}
                             </div>
                             {/* Detalles adicionales */}
-                            <div className="text-xs text-green-300 mt-1">
+                            <div className="text-xs text-gray-500 mt-1">
                               {order.tipo_residuo && `Tipo: ${order.tipo_residuo}`}
                               {order.quantity && ` • Cantidad: ${order.quantity} ${order.unit || 'Kg'}`}
                               {order.clave && ` • Clave: ${order.clave}`}
@@ -383,12 +395,12 @@ const OperatorDashboardPage = () => {
                           </div>
                         </div>
                         <div className="flex items-center space-x-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            order.status === 'PENDIENTE' ? 'bg-yellow-100 text-yellow-800' :
-                            order.status === 'EN_PROCESO' ? 'bg-blue-100 text-blue-800' :
-                            order.status === 'EN_RUTA' ? 'bg-purple-100 text-purple-800' :
-                            order.status === 'COMPLETADO' ? 'bg-green-100 text-green-800' :
-                            'bg-gray-100 text-gray-800'
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            order.status === 'PENDIENTE' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                            order.status === 'EN_PROCESO' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                            order.status === 'EN_RUTA' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                            order.status === 'COMPLETADO' ? 'bg-green-100 text-green-800 border border-green-200' :
+                            'bg-gray-100 text-gray-800 border border-gray-200'
                           }`}>
                             {order.status}
                           </span>
@@ -444,9 +456,11 @@ const OperatorDashboardPage = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <CheckCircle className="mx-auto h-12 w-12 text-green-400" />
-                  <h3 className="mt-2 text-sm font-medium text-white">No hay órdenes pendientes</h3>
-                  <p className="mt-1 text-sm text-green-200">Todas las órdenes están procesadas.</p>
+                  <div className="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <CheckCircle className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-lg">No hay órdenes pendientes</p>
+                  <p className="text-gray-400 text-sm">Todas las órdenes están procesadas.</p>
                 </div>
               )}
             </div>
@@ -458,11 +472,11 @@ const OperatorDashboardPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.5 }}
           >
-            <div className="bg-green-900/30 border border-green-600/50 rounded-xl p-6">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6">
               <div className="mb-4">
-                <h3 className="text-xl font-bold text-white">⚠️ Permisos del Operador</h3>
+                <h3 className="text-xl font-bold text-gray-900">⚠️ Permisos del Operador</h3>
               </div>
-              <div className="text-green-100 space-y-2">
+              <div className="text-gray-700 space-y-2">
                 <p className="text-sm">
                   <strong>Como operador, solo puedes:</strong>
                 </p>

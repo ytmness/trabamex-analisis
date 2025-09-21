@@ -3,11 +3,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Detectar si estamos en el dashboard
+  const isInDashboard = location.pathname.includes('/mir/');
+  
+  // Función para obtener la URL de inicio correcta según el contexto
+  const getHomeUrl = () => {
+    if (isInDashboard && profile?.role) {
+      return `/mir/${profile.role}`;
+    }
+    return '/';
+  };
 
   const handleNavClick = (sectionId) => {
     setIsMobileMenuOpen(false);
@@ -47,7 +60,7 @@ const Header = () => {
           </Link>
           
           <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
-            <Link to="/" className="text-black hover:text-red-600 transition-colors font-medium">Inicio</Link>
+            <Link to={getHomeUrl()} className="text-black hover:text-red-600 transition-colors font-medium">Inicio</Link>
             {navLinks.map((link) => (
               <a
                 key={link.id}
@@ -86,7 +99,7 @@ const Header = () => {
                 </Button>
               </div>
               <div className="flex flex-col items-center justify-center space-y-8 mt-16">
-                 <Link to="/" className="text-2xl text-black hover:text-red-600 transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>Inicio</Link>
+                 <Link to={getHomeUrl()} className="text-2xl text-black hover:text-red-600 transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>Inicio</Link>
                 {navLinks.map((link) => (
                   <a
                     key={link.id}

@@ -24,7 +24,6 @@ import supabase from '../../lib/customSupabaseClient.js';
 import { useToast } from '@/components/ui/use-toast';
 import { DataTable } from '@/components/ui/data-table';
 import { columns as createColumns } from './clients-columns';
-import { UserFormDialog } from '@/components/admin/UserFormDialog';
 
 const AdminClientsPage = () => {
   const [clients, setClients] = useState([]);
@@ -145,9 +144,46 @@ const AdminClientsPage = () => {
     setIsFormOpen(true);
   };
 
-  const handleSuccess = () => {
-    fetchClients();
-    setIsFormOpen(false);
+  const handleCreateUser = async (userData) => {
+    try {
+      console.log('🔍 Creando perfil de usuario:', userData);
+      
+      // Crear solo el perfil en la tabla profiles
+      const { data: profileData, error: profileError } = await supabase.rpc('create_user_profile', {
+        p_email: userData.email,
+        p_full_name: userData.full_name,
+        p_role: userData.role,
+        p_password: userData.password
+      });
+
+      if (profileError) {
+        console.error('❌ Error creando perfil:', profileError);
+        toast({
+          variant: 'destructive',
+          title: 'Error al crear perfil',
+          description: profileError.message,
+        });
+        return false;
+      }
+
+      console.log('✅ Perfil creado:', profileData);
+
+      toast({
+        title: 'Perfil creado exitosamente',
+        description: `El perfil de ${userData.email} ha sido creado. El usuario debe registrarse normalmente para activar su cuenta.`,
+      });
+      
+      fetchClients();
+      return true;
+    } catch (error) {
+      console.error('❌ Error en handleCreateUser:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Error inesperado al crear perfil',
+      });
+      return false;
+    }
   };
 
   const handleExport = () => {
@@ -414,13 +450,121 @@ const AdminClientsPage = () => {
         </div>
       </div>
 
-      <UserFormDialog 
-        isOpen={isFormOpen} 
-        setIsOpen={setIsFormOpen}
-        user={selectedUser}
-        onSuccess={handleSuccess}
-        defaultRole="user"
-      />
+      {/* Modal para crear/editar usuario */}
+      {isFormOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">
+              {selectedUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+            </h3>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              const userData = {
+                email: formData.get('email')?.trim(),
+                full_name: formData.get('full_name')?.trim(),
+                role: formData.get('role'),
+                password: formData.get('password')?.trim() || null
+              };
+              
+              // Validaciones básicas
+              if (!userData.email || !userData.full_name) {
+                toast({
+                  variant: 'destructive',
+                  title: 'Error de validación',
+                  description: 'Email y nombre completo son obligatorios',
+                });
+                return;
+              }
+              
+              const success = await handleCreateUser(userData);
+              if (success) {
+                setIsFormOpen(false);
+                setSelectedUser(null);
+              }
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <Input
+                    name="email"
+                    type="email"
+                    defaultValue={selectedUser?.email || ''}
+                    required
+                    className="w-full"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre Completo
+                  </label>
+                  <Input
+                    name="full_name"
+                    defaultValue={selectedUser?.full_name || ''}
+                    required
+                    className="w-full"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Rol
+                  </label>
+                  <select
+                    name="role"
+                    defaultValue={selectedUser?.role || 'user'}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="user">Cliente</option>
+                    <option value="operator">Operador</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Contraseña
+                  </label>
+                  <Input
+                    name="password"
+                    type="password"
+                    placeholder={selectedUser ? "Dejar vacío para mantener actual" : "Opcional - para registro futuro"}
+                    className="w-full"
+                  />
+                  {!selectedUser && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      El usuario deberá registrarse normalmente para activar su cuenta
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsFormOpen(false);
+                    setSelectedUser(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {selectedUser ? 'Actualizar' : 'Crear'} Usuario
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };

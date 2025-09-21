@@ -74,7 +74,24 @@ const RoleBasedHeader = () => {
   };
 
   const goHome = () => {
-    navigate('/mir');
+    // Navegar al dashboard correcto según el rol del usuario
+    console.log('🏠 Botón Inicio clickeado');
+    console.log('🏠 Perfil actual:', profile);
+    console.log('🏠 Rol del perfil:', profile?.role);
+    
+    if (profile.role === 'user') {
+      console.log('🏠 Navegando a /mir/user');
+      window.location.href = '/mir/user';
+    } else if (profile.role === 'operator') {
+      console.log('🏠 Navegando a /mir/operator');
+      window.location.href = '/mir/operator';
+    } else if (profile.role === 'admin') {
+      console.log('🏠 Navegando a /mir/admin');
+      window.location.href = '/mir/admin';
+    } else {
+      console.log('🏠 Rol no reconocido, navegando a /mir/user como fallback');
+      window.location.href = '/mir/user';
+    }
   };
 
   // Determinar si estamos en panel de admin o usuario
@@ -110,14 +127,19 @@ const RoleBasedHeader = () => {
             </button>
 
             {/* Botón Inicio */}
-            <button 
-              onClick={goHome}
+            <a 
+              href="/mir/admin"
+              onClick={(e) => {
+                e.preventDefault();
+                console.log('🏠 Botón Inicio clickeado - EVENTO CAPTURADO');
+                goHome();
+              }}
               className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               title="Inicio"
             >
               <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Inicio</span>
-            </button>
+            </a>
 
             {/* Botón Panel de Cliente */}
             {profile.role === 'admin' && (
