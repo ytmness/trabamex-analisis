@@ -29,7 +29,9 @@ import {
   Download,
   Eye,
   Box,
-  LogOut
+  LogOut,
+  FlaskConical,
+  Shield
 } from 'lucide-react';
 
 const DashboardPage = () => {
@@ -39,6 +41,8 @@ const DashboardPage = () => {
   const [activeOrders, setActiveOrders] = useState([]);
   const [activeSuppliesRequests, setActiveSuppliesRequests] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [treatments, setTreatments] = useState([]);
+  const [certificates, setCertificates] = useState([]);
   const [planStats, setPlanStats] = useState({
     hasPlan: false,
     usage: 0,
@@ -83,7 +87,7 @@ const DashboardPage = () => {
     { 
       name: 'Reportar Incidencia', 
       icon: AlertCircle, 
-      path: '/mir/user/incidencias',
+      path: '/mir/user/mis-incidencias',
       description: 'Reportar problemas o incidencias'
     },
     { 
@@ -112,17 +116,37 @@ const DashboardPage = () => {
       setLoadingOrders(true);
       
       try {
-        // Obtener órdenes activas de recolección (service_orders)
-        const { data: ordersData, error: ordersError } = await supabase
+        // Obtener todas las órdenes del usuario
+        const { data: allOrdersData, error: ordersError } = await supabase
           .from('service_orders')
-          .select('id, status, created_at')
+          .select('*')
           .eq('customer_id', user.id)
-          .neq('status', 'TREATED')
-          .neq('status', 'CANCELLED')
           .order('created_at', { ascending: false });
         
         if (ordersError) throw ordersError;
-        setActiveOrders(ordersData || []);
+        
+        // Filtrar órdenes activas (no tratadas ni canceladas)
+        const activeOrders = (allOrdersData || []).filter(order => 
+          order.status !== 'TREATED' && 
+          order.status !== 'CANCELLED' && 
+          order.status !== 'CERTIFIED'
+        );
+        setActiveOrders(activeOrders);
+
+        // Filtrar tratamientos (órdenes en proceso de tratamiento)
+        const treatments = (allOrdersData || []).filter(order => 
+          ['IN_TREATMENT', 'TREATED', 'CERTIFIED'].includes(order.status)
+        );
+        setTreatments(treatments);
+
+        // Filtrar certificados (órdenes que deberían tener certificados)
+        const certificates = (allOrdersData || []).filter(order => 
+          // Órdenes con documentos adjuntos O órdenes que están en estados finales
+          order.certificate_url || 
+          order.manifest_url || 
+          ['TREATED', 'CERTIFIED', 'COMPLETED', 'PROCESSED'].includes(order.status)
+        );
+        setCertificates(certificates);
 
         // Obtener solicitudes activas de insumos (supplies_requests)
         const { data: suppliesData, error: suppliesError } = await supabase
@@ -543,63 +567,6 @@ const DashboardPage = () => {
                 </Button>
               </motion.div>
 
-              {/* Actividad Reciente */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow"
-              >
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-blue-100 p-2 rounded-lg">
-                        <Clock className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-gray-800">Actividad Reciente</h2>
-                        <p className="text-blue-600 text-sm">Últimas 4</p>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      asChild
-                      className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                    >
-                      <Link to="/mir/user/historial">
-                        Ver Todas
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-                
-                {recentActivity.length > 0 ? (
-                  <div className="space-y-2">
-                    {recentActivity.slice(0, 4).map((activity, index) => (
-                      <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:from-blue-50 hover:to-blue-100 transition-all duration-200">
-                        <div className="bg-blue-100 p-2 rounded-lg">
-                          <Clock className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-800 text-sm">{activity.title}</p>
-                          <p className="text-xs text-gray-600">{activity.description}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
-                            {activity.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <Clock className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-gray-500 text-sm">No hay actividad reciente</p>
-                  </div>
-                )}
-              </motion.div>
 
               {/* Órdenes Activas */}
               <motion.div
@@ -677,6 +644,199 @@ const DashboardPage = () => {
                   <div className="text-center py-6">
                     <Package className="mx-auto h-8 w-8 text-gray-400 mb-2" />
                     <p className="text-gray-500 text-sm">No hay solicitudes activas</p>
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Sección de Tratamientos */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
+                className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow"
+              >
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-red-100 p-2 rounded-lg">
+                        <FlaskConical className="h-5 w-5 text-red-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-gray-800">Estado de Tratamientos</h2>
+                        <p className="text-red-600 text-sm">{treatments.length} en proceso</p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      asChild
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                    >
+                      <Link to="/mir/user/tracking">
+                        Ver Todos
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+                
+                {treatments.length > 0 ? (
+                  <div className="space-y-2">
+                    {treatments.slice(0, 3).map((treatment) => (
+                      <div key={treatment.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:border-red-300 hover:shadow-sm transition-all duration-200">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-red-100 p-2 rounded-lg">
+                            <FlaskConical className="h-4 w-4 text-red-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-800 text-sm">
+                              Orden #{treatment.id.substring(0,8)}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              {treatment.tipo_residuo && `Tipo: ${treatment.tipo_residuo}`}
+                              {treatment.quantity && ` • ${treatment.quantity} ${treatment.unit || 'kg'}`}
+                            </p>
+                            {treatment.treatment_process && (
+                              <p className="text-xs text-blue-600 font-medium">
+                                Proceso: {treatment.treatment_process}
+                              </p>
+                            )}
+                            {treatment.treatment_started_at && (
+                              <p className="text-xs text-gray-500">
+                                Iniciado: {new Date(treatment.treatment_started_at).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge className={`text-xs ${
+                            treatment.status === 'IN_TREATMENT' ? 'bg-blue-100 text-blue-800' :
+                            treatment.status === 'TREATED' ? 'bg-yellow-100 text-yellow-800' :
+                            treatment.status === 'CERTIFIED' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {treatment.status === 'IN_TREATMENT' ? 'En Tratamiento' :
+                             treatment.status === 'TREATED' ? 'Tratado' :
+                             treatment.status === 'CERTIFIED' ? 'Certificado' :
+                             treatment.status}
+                          </Badge>
+                          <Link 
+                            to={`/mir/user/tracking/${treatment.id}`}
+                            className="text-red-600 border border-red-300 hover:bg-red-50 px-2 py-1 rounded text-xs transition-colors flex items-center space-x-1"
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span>Ver</span>
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <FlaskConical className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p className="text-gray-500 text-sm">No hay tratamientos en proceso</p>
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Sección de Certificaciones */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.7 }}
+                className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow"
+              >
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-green-100 p-2 rounded-lg">
+                        <Shield className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-gray-800">Certificaciones y Documentos</h2>
+                        <p className="text-green-600 text-sm">{certificates.length} disponibles</p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      asChild
+                      className="text-green-600 border-green-200 hover:bg-green-50"
+                    >
+                      <Link to="/mir/user/certificados">
+                        Ver Todos
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+                
+                {certificates.length > 0 ? (
+                  <div className="space-y-2">
+                    {certificates.slice(0, 3).map((certificate) => (
+                      <div key={certificate.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:border-green-300 hover:shadow-sm transition-all duration-200">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-green-100 p-2 rounded-lg">
+                            <Shield className="h-4 w-4 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-800 text-sm">
+                              Orden #{certificate.id.substring(0,8)}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              {certificate.tipo_residuo && `Tipo: ${certificate.tipo_residuo}`}
+                              {certificate.quantity && ` • ${certificate.quantity} ${certificate.unit || 'kg'}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge className={`text-xs ${
+                            certificate.status === 'CERTIFIED' ? 'bg-green-100 text-green-800' :
+                            certificate.status === 'TREATED' ? 'bg-yellow-100 text-yellow-800' :
+                            certificate.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
+                            certificate.status === 'PROCESSED' ? 'bg-purple-100 text-purple-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {certificate.status === 'CERTIFIED' ? 'Certificado' :
+                             certificate.status === 'TREATED' ? 'Tratado' :
+                             certificate.status === 'COMPLETED' ? 'Completado' :
+                             certificate.status === 'PROCESSED' ? 'Procesado' :
+                             certificate.status}
+                          </Badge>
+                          <div className="flex space-x-1">
+                            {certificate.certificate_url ? (
+                              <button
+                                onClick={() => window.open(certificate.certificate_url, '_blank')}
+                                className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs transition-colors flex items-center space-x-1"
+                              >
+                                <Download className="h-3 w-3" />
+                                <span>Cert</span>
+                              </button>
+                            ) : (
+                              <span className="bg-gray-200 text-gray-500 px-2 py-1 rounded text-xs">
+                                Sin Cert
+                              </span>
+                            )}
+                            {certificate.manifest_url ? (
+                              <button
+                                onClick={() => window.open(certificate.manifest_url, '_blank')}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors flex items-center space-x-1"
+                              >
+                                <Download className="h-3 w-3" />
+                                <span>Manif</span>
+                              </button>
+                            ) : (
+                              <span className="bg-gray-200 text-gray-500 px-2 py-1 rounded text-xs">
+                                Sin Manif
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Shield className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p className="text-gray-500 text-sm">No hay certificados disponibles</p>
                   </div>
                 )}
               </motion.div>

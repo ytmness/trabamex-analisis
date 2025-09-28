@@ -36,13 +36,10 @@ const AdminTreatmentsPage = () => {
           id,
           customer_id,
           status,
-          scheduled_date,
+          client_name,
+          fecha_solicitud,
           created_at,
-          updated_at,
-          profiles:customer_id (
-            full_name,
-            email
-          )
+          updated_at
         `)
         .in('status', ['IN_TREATMENT', 'TREATED', 'CERTIFIED'])
         .order('created_at', { ascending: false });
@@ -63,9 +60,8 @@ const AdminTreatmentsPage = () => {
           status: getBatchStatusFromOrderStatus(order.status),
           start_at: order.created_at,
           end_at: order.status === 'CERTIFIED' ? order.updated_at : null,
-          service_orders: {
-            profiles: order.profiles
-          }
+          client_name: order.client_name,
+          customer_id: order.customer_id
         }));
         setBatches(transformedData);
       }
@@ -285,7 +281,7 @@ const AdminTreatmentsPage = () => {
                         <strong>Orden:</strong> {batch.service_order_id?.slice(-8) || 'N/A'}
                       </div>
                       <div className="text-sm text-gray-900">
-                        <strong>Cliente:</strong> {batch.service_orders?.profiles?.full_name || 'N/A'}
+                        <strong>Cliente:</strong> {batch.client_name || 'N/A'}
                       </div>
                       <div className="text-sm text-gray-500">
                         <strong>Proceso:</strong> {batch.process}
@@ -353,7 +349,7 @@ const TreatmentFormDialog = ({ isOpen, setIsOpen, onSuccess, editingBatch }) => 
         try {
           const { data, error } = await supabase
             .from('service_orders')
-            .select('id, customer_id, status, profiles:customer_id(full_name, email)')
+            .select('id, customer_id, status, client_name')
             .in('status', ['EN_ROUTE_TO_TREATMENT', 'IN_TREATMENT', 'TREATED']);
           
           if (error) {
@@ -408,14 +404,29 @@ const TreatmentFormDialog = ({ isOpen, setIsOpen, onSuccess, editingBatch }) => 
       // Determinar el nuevo estado basado en el proceso seleccionado
       const newStatus = status === 'completed' ? 'TREATED' : 'IN_TREATMENT';
 
+      // Preparar datos de actualización
+      const updateData = {
+        status: newStatus,
+        treatment_process: process,
+        treatment_notes: notes,
+        updated_at: new Date().toISOString()
+      };
+
+      // Si el estado cambia a "En Tratamiento", registrar fecha de inicio
+      if (newStatus === 'IN_TREATMENT' && !editingBatch) {
+        updateData.treatment_started_at = new Date().toISOString();
+      }
+
+      // Si el estado cambia a "Completado", registrar fecha de finalización
+      if (newStatus === 'TREATED') {
+        updateData.treatment_completed_at = new Date().toISOString();
+      }
+
       if (editingBatch) {
         // Actualizar orden existente
         const { error } = await supabase
           .from('service_orders')
-          .update({
-            status: newStatus,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', editingBatch.id);
 
         if (error) throw error;
@@ -428,10 +439,7 @@ const TreatmentFormDialog = ({ isOpen, setIsOpen, onSuccess, editingBatch }) => 
         // Actualizar orden existente a estado de tratamiento
         const { error } = await supabase
           .from('service_orders')
-          .update({
-            status: newStatus,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', selectedOrder);
 
         if (error) throw error;
@@ -493,7 +501,7 @@ const TreatmentFormDialog = ({ isOpen, setIsOpen, onSuccess, editingBatch }) => 
                   <SelectContent>
                     {orders.map(o => (
                       <SelectItem key={o.id} value={o.id}>
-                        {`${o.id.substring(0,8)} - ${o.profiles?.full_name || 'Cliente'}`}
+                        {`${o.id.substring(0,8)} - ${o.client_name || o.profiles?.full_name || 'Cliente'}`}
                       </SelectItem>
                     ))}
                   </SelectContent>

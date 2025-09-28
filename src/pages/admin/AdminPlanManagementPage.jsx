@@ -43,7 +43,7 @@ const AdminPlanManagementPage = () => {
     try {
       setLoading(true);
       
-      // Obtener usuarios con sus planes
+      // Obtener usuarios con sus planes (ahora con relación FK correcta)
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')
         .select(`
@@ -57,7 +57,6 @@ const AdminPlanManagementPage = () => {
             name,
             status,
             start_date,
-            end_date,
             created_at
           )
         `)
@@ -247,8 +246,8 @@ const AdminPlanManagementPage = () => {
                   <p className="text-sm font-medium text-gray-600">Total Usuarios</p>
                   <p className="text-2xl font-bold text-gray-900">{users.length}</p>
                 </div>
-                <div className="bg-blue-100 p-3 rounded-lg">
-                  <Users className="h-6 w-6 text-blue-600" />
+                <div className="bg-red-100 p-3 rounded-lg">
+                  <Users className="h-6 w-6 text-red-600" />
                 </div>
               </div>
             </div>

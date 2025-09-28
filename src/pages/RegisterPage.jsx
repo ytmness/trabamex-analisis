@@ -21,35 +21,21 @@ const RegisterPage = () => {
 
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        
-        try {
-            const { data, error } = await signUp(email, password, fullName);
-            setLoading(false);
-            
-            if (error) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Error al registrar',
-                    description: error.message,
-                });
-            } else {
-                toast({
-                    title: '¡Registro exitoso!',
-                    description: 'Te hemos enviado un correo de verificación. Por favor confirma tu email antes de iniciar sesión.',
-                });
-                navigate('/login');
-            }
-        } catch (error) {
-            setLoading(false);
-            toast({
-                variant: 'destructive',
-                title: 'Error inesperado',
-                description: 'Ocurrió un error inesperado durante el registro.',
-            });
+        e.preventDefault()
+        setLoading(true)
+        const { data, error } = await signUp(email, password, fullName)
+        setLoading(false)
+
+        if (error) {
+            toast({ variant: 'destructive', title: 'Error al registrar', description: error.message })
+            return
         }
-    };
+        toast({
+            title: 'Registro exitoso',
+            description: 'Te enviamos un correo de verificación. Confirma tu email para poder iniciar sesión.',
+        })
+        navigate('/login')
+    }
 
     return (
         <>

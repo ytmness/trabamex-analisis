@@ -224,7 +224,7 @@ const OperatorRouteDetailPage = () => {
                 <Card className="bg-white shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
                   <CardHeader>
                     <CardTitle className="flex justify-between items-start text-xl text-gray-900">
-                      <span>{stop.service_order.client_name || stop.service_order.customer?.full_name || 'Cliente'}</span>
+                      <span>{stop.service_order.client_name || 'Cliente'}</span>
                       <span className="text-sm font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
                         Orden #{index + 1}
                       </span>

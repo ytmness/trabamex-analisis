@@ -13,7 +13,11 @@ import {
   Box, 
   BarChart3, 
   Clock,
-  Loader2 
+  Loader2,
+  FlaskConical,
+  Shield,
+  Download,
+  Eye
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import supabase from '../lib/customSupabaseClient.js';
@@ -29,7 +33,9 @@ const UserDashboardPage = () => {
     collectionHistory: [],
     checklist: [],
     supplies: [],
-    reports: []
+    reports: [],
+    treatments: [],
+    certificates: []
   });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -39,23 +45,55 @@ const UserDashboardPage = () => {
     setLoading(true);
     
     try {
-      // Aquí irían las consultas a Supabase para obtener datos del usuario
-      // Por ahora usamos datos de ejemplo
+      // Obtener órdenes del usuario
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('service_orders')
+        .select('*')
+        .eq('customer_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (ordersError) throw ordersError;
+
+      // Obtener órdenes activas
+      const activeRequests = (ordersData || []).filter(order => 
+        ['PENDING', 'PENDIENTE', 'EN_PROCESO', 'EN_RUTA'].includes(order.status)
+      );
+
+      // Obtener tratamientos
+      const treatments = (ordersData || []).filter(order => 
+        ['IN_TREATMENT', 'TREATED', 'CERTIFIED'].includes(order.status)
+      );
+
+      // Obtener certificados
+      const certificates = (ordersData || []).filter(order => 
+        order.certificate_url || order.manifest_url
+      );
+
+      // Calcular uso del plan
+      const completedOrders = (ordersData || []).filter(order => 
+        ['COMPLETADO', 'TREATED', 'CERTIFIED'].includes(order.status)
+      );
+
       setUserData({
-        planUsage: { used: 3, total: 10 },
-        activeRequests: [
-          { id: 1, type: 'Recolección', status: 'Pendiente', date: '2024-01-15' },
-          { id: 2, type: 'Insumos', status: 'Aprobado', date: '2024-01-20' }
-        ],
-        nextCollection: { date: '2024-01-25', time: '09:00', type: 'Recolección Regular' },
-        manifests: [
-          { id: 1, date: '2024-01-10', status: 'Completado' },
-          { id: 2, date: '2024-01-05', status: 'Completado' }
-        ],
-        collectionHistory: [
-          { id: 1, date: '2024-01-10', type: 'Recolección', status: 'Completado' },
-          { id: 2, date: '2024-01-05', type: 'Entrega', status: 'Completado' }
-        ],
+        planUsage: { used: completedOrders.length, total: 10 },
+        activeRequests: activeRequests.map(order => ({
+          id: order.id,
+          type: 'Recolección',
+          status: order.status,
+          date: new Date(order.created_at).toLocaleDateString()
+        })),
+        nextCollection: null, // Se puede calcular basado en órdenes pendientes
+        manifests: certificates.map(order => ({
+          id: order.id,
+          date: new Date(order.created_at).toLocaleDateString(),
+          status: 'Completado'
+        })),
+        collectionHistory: completedOrders.map(order => ({
+          id: order.id,
+          date: new Date(order.created_at).toLocaleDateString(),
+          type: 'Recolección',
+          status: 'Completado'
+        })),
         checklist: [
           { id: 1, item: 'Separar residuos', completed: true },
           { id: 2, item: 'Verificar contenedores', completed: false }
@@ -64,10 +102,14 @@ const UserDashboardPage = () => {
           { id: 1, name: 'Contenedores', quantity: 5, status: 'Disponible' },
           { id: 2, name: 'Bolsas', quantity: 20, status: 'Disponible' }
         ],
-        reports: [
-          { id: 1, title: 'Reporte Mensual', date: '2024-01-01', type: 'PDF' },
-          { id: 2, title: 'Certificado Ambiental', date: '2024-01-01', type: 'PDF' }
-        ]
+        reports: certificates.map(order => ({
+          id: order.id,
+          title: `Certificado ${order.id.substring(0,8)}`,
+          date: new Date(order.created_at).toLocaleDateString(),
+          type: 'PDF'
+        })),
+        treatments: treatments,
+        certificates: certificates
       });
     } catch (error) {
       toast({
@@ -269,11 +311,160 @@ const UserDashboardPage = () => {
             </div>
           </motion.div>
 
-          {/* Resumen de Actividad */}
+          {/* Sección de Tratamientos */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
+            className="mb-8"
+          >
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                  <FlaskConical className="h-6 w-6 text-red-600 mr-3" />
+                  Estado de Tratamientos
+                </h2>
+                <p className="text-gray-600">Seguimiento del proceso de tratamiento de tus residuos</p>
+              </div>
+              
+              {userData.treatments.length > 0 ? (
+                <div className="space-y-4">
+                  {userData.treatments.map((treatment) => (
+                    <div key={treatment.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-red-100 p-2 rounded-lg">
+                          <FlaskConical className="h-5 w-5 text-red-600" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">
+                            Orden #{treatment.id.substring(0,8)}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {treatment.tipo_residuo && `Tipo: ${treatment.tipo_residuo}`}
+                            {treatment.quantity && ` • Cantidad: ${treatment.quantity} ${treatment.unit || 'kg'}`}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Fecha: {new Date(treatment.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          treatment.status === 'IN_TREATMENT' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                          treatment.status === 'TREATED' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                          treatment.status === 'CERTIFIED' ? 'bg-green-100 text-green-800 border border-green-200' :
+                          'bg-gray-100 text-gray-800 border border-gray-200'
+                        }`}>
+                          {treatment.status === 'IN_TREATMENT' ? 'En Tratamiento' :
+                           treatment.status === 'TREATED' ? 'Tratado' :
+                           treatment.status === 'CERTIFIED' ? 'Certificado' :
+                           treatment.status}
+                        </span>
+                        <Link 
+                          to={`/mir/user/tracking/${treatment.id}`}
+                          className="text-red-600 border border-red-500 hover:bg-red-500 hover:text-white px-3 py-1 rounded-md text-sm transition-colors flex items-center space-x-1"
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span>Ver Detalles</span>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <FlaskConical className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-lg">No hay tratamientos en proceso</p>
+                  <p className="text-gray-400 text-sm">Los residuos aparecerán aquí cuando estén en tratamiento</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Sección de Certificaciones */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="mb-8"
+          >
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                  <Shield className="h-6 w-6 text-red-600 mr-3" />
+                  Certificaciones y Documentos
+                </h2>
+                <p className="text-gray-600">Descarga todos los certificados y documentos de tus órdenes</p>
+              </div>
+              
+              {userData.certificates.length > 0 ? (
+                <div className="space-y-4">
+                  {userData.certificates.map((certificate) => (
+                    <div key={certificate.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-green-100 p-2 rounded-lg">
+                          <Shield className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">
+                            Orden #{certificate.id.substring(0,8)}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {certificate.tipo_residuo && `Tipo: ${certificate.tipo_residuo}`}
+                            {certificate.quantity && ` • Cantidad: ${certificate.quantity} ${certificate.unit || 'kg'}`}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Fecha: {new Date(certificate.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                          Certificado
+                        </span>
+                        <div className="flex space-x-2">
+                          {certificate.certificate_url && (
+                            <button
+                              onClick={() => window.open(certificate.certificate_url, '_blank')}
+                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm transition-colors flex items-center space-x-1"
+                            >
+                              <Download className="h-4 w-4" />
+                              <span>Certificado</span>
+                            </button>
+                          )}
+                          {certificate.manifest_url && (
+                            <button
+                              onClick={() => window.open(certificate.manifest_url, '_blank')}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm transition-colors flex items-center space-x-1"
+                            >
+                              <Download className="h-4 w-4" />
+                              <span>Manifiesto</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <Shield className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-lg">No hay certificados disponibles</p>
+                  <p className="text-gray-400 text-sm">Los certificados aparecerán aquí cuando estén listos</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Resumen de Actividad */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-6"
           >
             {/* Manifiestos */}

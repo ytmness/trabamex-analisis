@@ -27,6 +27,9 @@ const AdminCertificatesPage = () => {
   const [generating, setGenerating] = useState({});
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCertificate, setEditingCertificate] = useState(null);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [uploadType, setUploadType] = useState(''); // 'certificate' o 'manifest'
+  const [selectedOrderId, setSelectedOrderId] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -38,38 +41,18 @@ const AdminCertificatesPage = () => {
       // Obtener órdenes listas para certificar (TREATED)
       const { data: readyData, error: readyError } = await supabase
         .from('service_orders')
-        .select(`
-          id,
-          customer_id,
-          status,
-          scheduled_date,
-          profiles:customer_id (
-            full_name,
-            email
-          )
-        `)
+        .select('*')
         .eq('status', 'TREATED')
-        .order('scheduled_date', { ascending: false });
+        .order('fecha_solicitud', { ascending: false });
 
       if (readyError) throw readyError;
 
       // Obtener órdenes ya certificadas
       const { data: certifiedData, error: certifiedError } = await supabase
         .from('service_orders')
-        .select(`
-          id,
-          customer_id,
-          status,
-          scheduled_date,
-          certificate_generated_at,
-          certificate_url,
-          profiles:customer_id (
-            full_name,
-            email
-          )
-        `)
+        .select('*')
         .eq('status', 'CERTIFIED')
-        .order('certificate_generated_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (certifiedError) throw certifiedError;
       
@@ -87,72 +70,16 @@ const AdminCertificatesPage = () => {
     }
   };
 
-  const handleGenerateCertificate = async (orderId) => {
-    setGenerating(prev => ({ ...prev, [orderId]: true }));
-    
-    try {
-      // Simular generación de certificado
-      const certificateUrl = `https://certificates.trabamex.com/${orderId}.pdf`;
-      
-      // Actualizar la orden con el certificado
-      const { error } = await supabase
-        .from('service_orders')
-        .update({
-          status: 'CERTIFIED',
-          certificate_generated_at: new Date().toISOString(),
-          certificate_url: certificateUrl
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-      
-      toast({
-        title: "¡Certificado generado!",
-        description: "El certificado de destrucción ha sido generado y almacenado exitosamente.",
-        variant: "default"
-      });
-      
-      // Recargar datos
-      fetchData();
-      
-    } catch (error) {
-      console.error('Error generating certificate:', error);
-      toast({
-        title: "Error",
-        description: `No se pudo generar el certificado: ${error.message}`,
-        variant: "destructive"
-      });
-    } finally {
-      setGenerating(prev => ({ ...prev, [orderId]: false }));
-    }
+  const handleGenerateCertificate = (orderId) => {
+    setSelectedOrderId(orderId);
+    setUploadType('certificate');
+    setIsUploadDialogOpen(true);
   };
 
-  const handleGenerateManifest = async (orderId) => {
-    setGenerating(prev => ({ ...prev, [`manifest_${orderId}`]: true }));
-    
-    try {
-      // Simular generación de manifiesto
-      const manifestUrl = `https://manifests.trabamex.com/${orderId}.pdf`;
-      
-      toast({
-        title: "¡Manifiesto generado!",
-        description: "El manifiesto de entrega ha sido generado y almacenado exitosamente.",
-        variant: "default"
-      });
-      
-      // Recargar datos
-      fetchData();
-      
-    } catch (error) {
-      console.error('Error generating manifest:', error);
-      toast({
-        title: "Error",
-        description: `No se pudo generar el manifiesto: ${error.message}`,
-        variant: "destructive"
-      });
-    } finally {
-      setGenerating(prev => ({ ...prev, [`manifest_${orderId}`]: false }));
-    }
+  const handleGenerateManifest = (orderId) => {
+    setSelectedOrderId(orderId);
+    setUploadType('manifest');
+    setIsUploadDialogOpen(true);
   };
 
   const handleEditCertificate = (order) => {
@@ -320,37 +247,27 @@ const AdminCertificatesPage = () => {
                         {getStatusBadge(order.status)}
                       </div>
                       <div className="text-sm text-gray-900">
-                        <strong>Cliente:</strong> {order.profiles?.full_name || 'N/A'}
+                        <strong>Cliente:</strong> {order.client_name || order.customer_id || 'N/A'}
                       </div>
                       <div className="text-sm text-gray-500">
-                        <strong>Fecha de recolección:</strong> {formatDate(order.scheduled_date)}
+                        <strong>Fecha de solicitud:</strong> {formatDate(order.fecha_solicitud)}
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <Button
                         onClick={() => handleGenerateManifest(order.id)}
-                        disabled={generating[`manifest_${order.id}`]}
                         variant="outline"
                         size="sm"
                       >
-                        {generating[`manifest_${order.id}`] ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <FileText className="h-4 w-4 mr-2" />
-                        )}
+                        <FileText className="h-4 w-4 mr-2" />
                         Generar Manifiesto
                       </Button>
                       <Button
                         onClick={() => handleGenerateCertificate(order.id)}
-                        disabled={generating[order.id]}
                         size="sm"
                         className="bg-red-600 hover:bg-red-700"
                       >
-                        {generating[order.id] ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                        )}
+                        <CheckCircle className="h-4 w-4 mr-2" />
                         Generar Certificado
                       </Button>
                     </div>
@@ -391,7 +308,7 @@ const AdminCertificatesPage = () => {
                         {getStatusBadge(order.status)}
                       </div>
                       <div className="text-sm text-gray-900">
-                        <strong>Cliente:</strong> {order.profiles?.full_name || 'N/A'}
+                        <strong>Cliente:</strong> {order.client_name || order.customer_id || 'N/A'}
                       </div>
                       <div className="text-sm text-gray-500">
                         <strong>Certificado emitido:</strong> {formatDate(order.certificate_generated_at)}
@@ -455,6 +372,17 @@ const AdminCertificatesPage = () => {
         }}
         editingCertificate={editingCertificate}
       />
+      
+      <FileUploadDialog
+        isOpen={isUploadDialogOpen}
+        setIsOpen={setIsUploadDialogOpen}
+        uploadType={uploadType}
+        orderId={selectedOrderId}
+        onSuccess={() => {
+          fetchData();
+          setIsUploadDialogOpen(false);
+        }}
+      />
     </>
   );
 };
@@ -475,7 +403,7 @@ const CertificateFormDialog = ({ isOpen, setIsOpen, onSuccess, editingCertificat
         try {
           const { data, error } = await supabase
             .from('service_orders')
-            .select('id, customer_id, status, profiles:customer_id(full_name, email)')
+            .select('id, customer_id, status')
             .eq('status', 'TREATED');
           
           if (error) {
@@ -588,7 +516,7 @@ const CertificateFormDialog = ({ isOpen, setIsOpen, onSuccess, editingCertificat
                   <SelectContent>
                     {orders.map(o => (
                       <SelectItem key={o.id} value={o.id}>
-                        {`${o.id.substring(0,8)} - ${o.profiles?.full_name || 'Cliente'}`}
+                        {`${o.id.substring(0,8)} - ${o.client_name || 'Cliente'}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -634,6 +562,206 @@ const CertificateFormDialog = ({ isOpen, setIsOpen, onSuccess, editingCertificat
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const FileUploadDialog = ({ isOpen, setIsOpen, uploadType, orderId, onSuccess }) => {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
+
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validar tipo de archivo
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Error",
+          description: "Solo se permiten archivos PDF, JPG, JPEG o PNG.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Validar tamaño (máximo 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "El archivo no puede ser mayor a 10MB.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      toast({
+        title: "Error",
+        description: "Por favor selecciona un archivo.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploading(true);
+    
+    try {
+      // Validar tipo de archivo
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      if (!allowedTypes.includes(selectedFile.type)) {
+        throw new Error('Tipo de archivo no permitido. Solo se permiten PDF, JPG, JPEG o PNG.');
+      }
+      
+      // Validar tamaño (máximo 10MB)
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        throw new Error('El archivo es demasiado grande. El tamaño máximo permitido es 10MB.');
+      }
+
+      // Crear nombre único para el archivo
+      const fileExtension = selectedFile.name.split('.').pop();
+      const fileName = `${uploadType}_${orderId}_${Date.now()}.${fileExtension}`;
+      
+      console.log('📤 Subiendo archivo a Supabase Storage:', fileName);
+      
+      // Subir archivo a Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('certificates') // Bucket para certificados y manifiestos
+        .upload(fileName, selectedFile);
+
+      if (uploadError) {
+        console.error('❌ Error en upload:', uploadError);
+        throw uploadError;
+      }
+
+      console.log('✅ Archivo subido exitosamente:', uploadData);
+
+      // Obtener URL pública del archivo
+      const { data: { publicUrl } } = supabase.storage
+        .from('certificates')
+        .getPublicUrl(fileName);
+      
+      // Actualizar la orden en la base de datos
+      const updateData = {
+        [`${uploadType}_url`]: publicUrl,
+        [`${uploadType}_generated_at`]: new Date().toISOString()
+      };
+      
+      if (uploadType === 'certificate') {
+        updateData.status = 'CERTIFIED';
+      }
+      
+      const { error } = await supabase
+        .from('service_orders')
+        .update(updateData)
+        .eq('id', orderId);
+
+      if (error) throw error;
+      
+      toast({
+        title: "¡Archivo subido exitosamente!",
+        description: `El ${uploadType === 'certificate' ? 'certificado' : 'manifiesto'} ha sido adjuntado correctamente.`,
+        variant: "default"
+      });
+      
+      onSuccess();
+      
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Error",
+        description: `No se pudo subir el archivo: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const resetDialog = () => {
+    setSelectedFile(null);
+    setUploading(false);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open);
+      if (!open) resetDialog();
+    }}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>
+            Adjuntar {uploadType === 'certificate' ? 'Certificado' : 'Manifiesto'}
+          </DialogTitle>
+          <DialogDescription>
+            Selecciona el archivo del {uploadType === 'certificate' ? 'certificado de destrucción' : 'manifiesto de entrega'} 
+            para la orden #{orderId?.substring(0, 8)}.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="file">Archivo</Label>
+            <Input
+              id="file"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={handleFileSelect}
+              className="cursor-pointer"
+            />
+            <p className="text-sm text-gray-500">
+              Formatos permitidos: PDF, JPG, JPEG, PNG (máximo 10MB)
+            </p>
+          </div>
+          
+          {selectedFile && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-green-600" />
+                <span className="text-sm text-green-800">
+                  Archivo seleccionado: {selectedFile.name}
+                </span>
+              </div>
+              <p className="text-xs text-green-600 mt-1">
+                Tamaño: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            </div>
+          )}
+        </div>
+        
+        <DialogFooter>
+          <Button 
+            type="button" 
+            variant="ghost" 
+            onClick={() => setIsOpen(false)}
+            disabled={uploading}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleUpload}
+            disabled={!selectedFile || uploading}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Subiendo...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Subir Archivo
+              </>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

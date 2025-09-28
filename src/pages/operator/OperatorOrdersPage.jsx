@@ -40,7 +40,7 @@ const OperatorOrdersPage = () => {
         .from('service_orders')
         .select(`
           *,
-          customer:profiles(full_name, company)
+          client_name
         `)
         .eq('operator_id', user.id)
         .in('status', ['PENDING', 'PENDIENTE', 'EN_PROCESO', 'EN_RUTA', 'COMPLETADO'])
@@ -286,7 +286,7 @@ const OperatorOrdersPage = () => {
                                 Solicitud #{order.id.substring(0,8)}
                               </div>
                               <div className="text-sm text-gray-600">
-                                Cliente: {order.customer?.full_name || order.client_name || 'Sin nombre'}
+                                Cliente: {order.client_name || 'Sin nombre'}
                               </div>
                               <div className="text-xs text-gray-500">
                                 Creada: {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}

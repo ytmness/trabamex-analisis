@@ -59,7 +59,7 @@ const OperatorDashboardPage = () => {
         .from('service_orders')
         .select(`
           *,
-          customer:profiles(full_name, company)
+          client_name
         `)
         .in('status', ['PENDING', 'PENDIENTE', 'EN_PROCESO', 'EN_RUTA', 'COMPLETADO'])
         .order('created_at', { ascending: true });
@@ -384,7 +384,7 @@ const OperatorDashboardPage = () => {
                           <div className="flex-1">
                             <div className="font-semibold text-gray-900">Orden #{order.id.substring(0,8)}</div>
                             <div className="text-sm text-gray-600">
-                              {order.customer?.full_name || order.client_name || 'Cliente'} • {format(new Date(order.created_at), 'dd/MM/yyyy')}
+                              {order.client_name || 'Cliente'} • {format(new Date(order.created_at), 'dd/MM/yyyy')}
                             </div>
                             {/* Detalles adicionales */}
                             <div className="text-xs text-gray-500 mt-1">

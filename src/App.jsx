@@ -101,16 +101,21 @@ function App() {
           <Route path="tracking" element={<ProtectedRoute allowedRoles={['admin', 'user']}><TrackingHubPage /></ProtectedRoute>} />
           <Route path="tracking/:orderId" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'user']}><TrackingPage /></ProtectedRoute>} />
           
-          {/* User Routes */}
-          <Route path="servicios" element={<ProtectedRoute allowedRoles={['user']}><ServicesPage /></ProtectedRoute>} />
-          <Route path="cronograma" element={<ProtectedRoute allowedRoles={['user']}><ServicesPage /></ProtectedRoute>} />
-          <Route path="solicitar" element={<ProtectedRoute allowedRoles={['user']}><RequestPage /></ProtectedRoute>} />
-          <Route path="planes" element={<ProtectedRoute allowedRoles={['user']}><PlansPage /></ProtectedRoute>} />
-          <Route path="checklist" element={<ProtectedRoute allowedRoles={['user']}><ChecklistPage /></ProtectedRoute>} />
-          <Route path="manifiestos" element={<ProtectedRoute allowedRoles={['user']}><PastCollectionsPage /></ProtectedRoute>} />
-          <Route path="solicitar-insumos" element={<ProtectedRoute allowedRoles={['user']}><SuppliesRequestPage /></ProtectedRoute>} />
-          <Route path="incidencias" element={<ProtectedRoute allowedRoles={['user']}><UserIncidentsPage /></ProtectedRoute>} />
-          <Route path="notificaciones" element={<ProtectedRoute allowedRoles={['user']}><NotificationsPage /></ProtectedRoute>} />
+          {/* Admin Routes - MOVED FIRST to avoid conflicts */}
+          <Route path="clientes" element={<ProtectedRoute allowedRoles={['admin']}><AdminClientsPage /></ProtectedRoute>} />
+          <Route path="clientes/:clientId" element={<ProtectedRoute allowedRoles={['admin']}><AdminClientDetailPage /></ProtectedRoute>} />
+          <Route path="operadores" element={<ProtectedRoute allowedRoles={['admin']}><AdminOperatorsPage /></ProtectedRoute>} />
+          <Route path="ordenes-admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminOrdersPage /></ProtectedRoute>} />
+          <Route path="rutas-admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminRoutesPage /></ProtectedRoute>} />
+          <Route path="planes-admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPlansPage /></ProtectedRoute>} />
+          <Route path="gestion-incidencias" element={<ProtectedRoute allowedRoles={['admin']}><AdminIncidentsPage /></ProtectedRoute>} />
+          <Route path="incidencias" element={<ProtectedRoute allowedRoles={['admin']}><AdminIncidentsPage /></ProtectedRoute>} />
+          <Route path="tratamientos" element={<ProtectedRoute allowedRoles={['admin']}><AdminTreatmentsPage /></ProtectedRoute>} />
+          <Route path="certificados" element={<ProtectedRoute allowedRoles={['admin']}><AdminCertificatesPage /></ProtectedRoute>} />
+          <Route path="supplies-requests" element={<ProtectedRoute allowedRoles={['admin']}><AdminSuppliesRequestsPage /></ProtectedRoute>} />
+          <Route path="supplies-requests/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminSuppliesRequestDetailPage /></ProtectedRoute>} />
+          <Route path="gestion-planes" element={<ProtectedRoute allowedRoles={['admin']}><AdminPlanManagementPage /></ProtectedRoute>} />
+          <Route path="asignaciones" element={<ProtectedRoute allowedRoles={['admin']}><AdminAssignmentsPage /></ProtectedRoute>} />
 
           {/* Operator Routes */}
           <Route path="rutas" element={<ProtectedRoute allowedRoles={['operator']}><OperatorRoutesPage /></ProtectedRoute>} />
@@ -122,20 +127,18 @@ function App() {
           <Route path="checklist" element={<ProtectedRoute allowedRoles={['operator']}><OperatorChecklistPage /></ProtectedRoute>} />
           <Route path="historial" element={<ProtectedRoute allowedRoles={['operator']}><OperatorHistoryPage /></ProtectedRoute>} />
 
-          {/* Admin Routes */}
-          <Route path="clientes" element={<ProtectedRoute allowedRoles={['admin']}><AdminClientsPage /></ProtectedRoute>} />
-          <Route path="clientes/:clientId" element={<ProtectedRoute allowedRoles={['admin']}><AdminClientDetailPage /></ProtectedRoute>} />
-          <Route path="operadores" element={<ProtectedRoute allowedRoles={['admin']}><AdminOperatorsPage /></ProtectedRoute>} />
-          <Route path="ordenes" element={<ProtectedRoute allowedRoles={['admin']}><AdminOrdersPage /></ProtectedRoute>} />
-          <Route path="rutas" element={<ProtectedRoute allowedRoles={['admin']}><AdminRoutesPage /></ProtectedRoute>} />
-          <Route path="planes-admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPlansPage /></ProtectedRoute>} />
-          <Route path="gestion-incidencias" element={<ProtectedRoute allowedRoles={['admin']}><AdminIncidentsPage /></ProtectedRoute>} />
-          <Route path="tratamientos" element={<ProtectedRoute allowedRoles={['admin']}><AdminTreatmentsPage /></ProtectedRoute>} />
-          <Route path="certificados" element={<ProtectedRoute allowedRoles={['admin']}><AdminCertificatesPage /></ProtectedRoute>} />
-          <Route path="supplies-requests" element={<ProtectedRoute allowedRoles={['admin']}><AdminSuppliesRequestsPage /></ProtectedRoute>} />
-          <Route path="supplies-requests/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminSuppliesRequestDetailPage /></ProtectedRoute>} />
-          <Route path="gestion-planes" element={<ProtectedRoute allowedRoles={['admin']}><AdminPlanManagementPage /></ProtectedRoute>} />
-          <Route path="asignaciones" element={<ProtectedRoute allowedRoles={['admin']}><AdminAssignmentsPage /></ProtectedRoute>} />
+          {/* User Routes - MOVED LAST to avoid conflicts */}
+          <Route path="servicios" element={<ProtectedRoute allowedRoles={['user']}><ServicesPage /></ProtectedRoute>} />
+          <Route path="cronograma" element={<ProtectedRoute allowedRoles={['user']}><ServicesPage /></ProtectedRoute>} />
+          <Route path="solicitar" element={<ProtectedRoute allowedRoles={['user']}><RequestPage /></ProtectedRoute>} />
+          <Route path="planes" element={<ProtectedRoute allowedRoles={['user']}><PlansPage /></ProtectedRoute>} />
+          <Route path="checklist" element={<ProtectedRoute allowedRoles={['user']}><ChecklistPage /></ProtectedRoute>} />
+          <Route path="manifiestos" element={<ProtectedRoute allowedRoles={['user']}><PastCollectionsPage /></ProtectedRoute>} />
+          <Route path="solicitar-insumos" element={<ProtectedRoute allowedRoles={['user']}><SuppliesRequestPage /></ProtectedRoute>} />
+          <Route path="mis-incidencias" element={<ProtectedRoute allowedRoles={['user']}><UserIncidentsPage /></ProtectedRoute>} />
+          <Route path="notificaciones" element={<ProtectedRoute allowedRoles={['user']}><NotificationsPage /></ProtectedRoute>} />
+          <Route path="historial" element={<ProtectedRoute allowedRoles={['user']}><PastCollectionsPage /></ProtectedRoute>} />
+          <Route path="certificados" element={<ProtectedRoute allowedRoles={['user']}><CertificationsPage /></ProtectedRoute>} />
         </Route>
 
         <Route path="/dashboard/*" element={<Navigate to="/login" replace />} />

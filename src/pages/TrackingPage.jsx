@@ -27,7 +27,8 @@ import {
   Camera,
   Plus,
   Edit,
-  Info
+  Info,
+  FlaskConical
 } from 'lucide-react';
 
 // Función para mapear estados de la base de datos a estados del timeline
@@ -102,11 +103,7 @@ const TrackingPage = () => {
     'Centro Industrial', 'Centro Comercial', 'Planta de Tratamiento',
     'Depósito Principal', 'Base de Operaciones'
   ]);
-  const [documents] = useState([
-    { name: 'Certificado de Destrucción', status: 'Disponible' },
-    { name: 'Manifesto de Transporte', status: 'En proceso' },
-    { name: 'Reporte de Pesaje', status: 'Disponible' }
-  ]);
+  const [documents, setDocuments] = useState([]);
 
   const fetchOrderData = useCallback(async () => {
     console.log('🔄 Debug Fetch - Iniciando fetch de datos...');
@@ -171,6 +168,7 @@ const TrackingPage = () => {
     setLoading(true);
     fetchOrderData();
     fetchEvidences();
+    fetchDocuments();
     
     // Cargar rutas guardadas desde localStorage
     const savedRoutes = JSON.parse(localStorage.getItem(`routes_${orderId}`) || '[]');
@@ -202,6 +200,68 @@ const TrackingPage = () => {
     } catch (error) {
       console.error('❌ Error fetching evidences:', error);
       setEvidences([]);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    try {
+      console.log('🔄 Cargando documentos para orden:', orderId);
+      
+      // Obtener la orden para verificar si tiene documentos adjuntos
+      const { data: orderData, error: orderError } = await supabase
+        .from('service_orders')
+        .select('certificate_url, manifest_url, status')
+        .eq('id', orderId)
+        .single();
+
+      if (orderError) {
+        console.log('⚠️ Error cargando orden para documentos:', orderError.message);
+        setDocuments([]);
+        return;
+      }
+
+      const docs = [];
+      
+      // Agregar certificado si existe
+      if (orderData.certificate_url) {
+        docs.push({
+          name: 'Certificado de Destrucción',
+          status: 'Disponible',
+          url: orderData.certificate_url,
+          type: 'certificate'
+        });
+      } else if (['TREATED', 'CERTIFIED'].includes(orderData.status)) {
+        docs.push({
+          name: 'Certificado de Destrucción',
+          status: 'En proceso',
+          url: null,
+          type: 'certificate'
+        });
+      }
+
+      // Agregar manifiesto si existe
+      if (orderData.manifest_url) {
+        docs.push({
+          name: 'Manifiesto de Transporte',
+          status: 'Disponible',
+          url: orderData.manifest_url,
+          type: 'manifest'
+        });
+      } else if (['COLLECTED', 'EN_ROUTE_TO_DEPOT', 'AT_DEPOT', 'WEIGHED_VERIFIED', 'EN_ROUTE_TO_TREATMENT', 'IN_TREATMENT', 'TREATED', 'CERTIFIED'].includes(orderData.status)) {
+        docs.push({
+          name: 'Manifiesto de Transporte',
+          status: 'En proceso',
+          url: null,
+          type: 'manifest'
+        });
+      }
+
+      setDocuments(docs);
+      console.log('✅ Documentos cargados:', docs);
+      
+    } catch (error) {
+      console.error('❌ Error fetching documents:', error);
+      setDocuments([]);
     }
   };
 
@@ -352,6 +412,54 @@ const TrackingPage = () => {
         variant: 'destructive',
         title: 'Error',
         description: `Error al descargar archivo: ${error.message}`,
+      });
+    }
+  };
+
+  const handleDownloadDocument = async (doc) => {
+    try {
+      if (!doc.url) {
+        throw new Error('El documento no está disponible para descarga');
+      }
+
+      console.log('📥 Descargando documento:', { name: doc.name, url: doc.url });
+
+      // Si es una URL pública de Supabase Storage, abrir directamente
+      if (doc.url.startsWith('http')) {
+        // Crear un enlace temporal para descarga
+        const a = document.createElement('a');
+        a.href = doc.url;
+        a.download = `${doc.name}.pdf`;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+
+      // Si es una ruta de Supabase Storage, descargar
+      const { data, error } = await supabase.storage
+        .from('certificates')
+        .download(doc.url);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${doc.name}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      console.log('✅ Documento descargado exitosamente');
+    } catch (error) {
+      console.error('❌ Error descargando documento:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: `Error al descargar documento: ${error.message}`,
       });
     }
   };
@@ -745,6 +853,73 @@ const TrackingPage = () => {
                 </span></span>
             </div>
         </motion.div>
+
+        {/* Información del Tratamiento */}
+        {(order.treatment_process || order.treatment_started_at || order.treatment_completed_at || order.treatment_notes) && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="bg-white p-6 rounded-xl shadow-md mb-6"
+          >
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <FlaskConical className="h-5 w-5 text-red-600" />
+              Información del Tratamiento
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Tipo de proceso */}
+              {order.treatment_process && (
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <span className="font-medium text-gray-700 block mb-1">Proceso de Tratamiento:</span>
+                  <span className="px-2 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    {order.treatment_process}
+                  </span>
+                </div>
+              )}
+
+              {/* Fecha de inicio */}
+              {order.treatment_started_at && (
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <span className="font-medium text-gray-700 block mb-1">Inicio del Tratamiento:</span>
+                  <span className="text-sm text-gray-600">
+                    {new Date(order.treatment_started_at).toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              )}
+
+              {/* Fecha de finalización */}
+              {order.treatment_completed_at && (
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <span className="font-medium text-gray-700 block mb-1">Finalización del Tratamiento:</span>
+                  <span className="text-sm text-gray-600">
+                    {new Date(order.treatment_completed_at).toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              )}
+
+              {/* Notas del tratamiento */}
+              {order.treatment_notes && (
+                <div className="p-3 bg-yellow-50 rounded-lg md:col-span-2">
+                  <span className="font-medium text-gray-700 block mb-2">Notas del Tratamiento:</span>
+                  <p className="text-sm text-gray-600">{order.treatment_notes}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <motion.div
@@ -1058,9 +1233,31 @@ const TrackingPage = () => {
                                     <FileText className="text-gray-400"/>
                                     <span className="font-medium text-gray-700">{doc.name}</span>
                                 </div>
-                                <Badge variant={doc.status === 'Disponible' ? 'success' : 'secondary'}>{doc.status}</Badge>
+                                <div className="flex items-center gap-2">
+                                    <Badge variant={doc.status === 'Disponible' ? 'success' : 'secondary'}>
+                                        {doc.status}
+                                    </Badge>
+                                    {doc.status === 'Disponible' && doc.url && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleDownloadDocument(doc)}
+                                            className="text-xs"
+                                        >
+                                            <Download className="h-3 w-3 mr-1" />
+                                            Descargar
+                                        </Button>
+                                    )}
+                                </div>
                             </li>
                         ))}
+                        {documents.length === 0 && (
+                            <li className="text-center py-8 text-gray-500">
+                                <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                                <p>No hay documentos disponibles aún</p>
+                                <p className="text-sm">Los documentos aparecerán aquí cuando estén listos</p>
+                            </li>
+                        )}
                      </ul>
                 </motion.div>
             </div>
