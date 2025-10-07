@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { LogOut } from "lucide-react";
+import { LogOut, Loader2 } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import supabase from '@/lib/customSupabaseClient';
 import { 
   Package, 
   Users, 
@@ -26,6 +28,142 @@ import {
 
 const AdminDashboardPage = () => {
   const { profile, signOut } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    suppliesRequests: { total: 0, pending: 0, approved: 0 },
+    treatments: { total: 0, active: 0, completed: 0 },
+    certificates: { total: 0, valid: 0, expired: 0 },
+    users: { clients: 0, operators: 0, total: 0 },
+    assignments: { total: 0, pending: 0, assigned: 0 },
+    incidents: { total: 0, open: 0, resolved: 0 },
+    configuration: { total: 0, active: 0, inactive: 0 },
+    plans: { total: 0, active: 0, expired: 0 }
+  });
+
+  // Función para cargar estadísticas
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+
+      // 1. Solicitudes de Insumos
+      const { data: suppliesRequests, error: suppliesError } = await supabase
+        .from('supplies_requests')
+        .select('status');
+
+      if (suppliesError) throw suppliesError;
+
+      const suppliesStats = {
+        total: suppliesRequests?.length || 0,
+        pending: suppliesRequests?.filter(r => r.status === 'pending').length || 0,
+        approved: suppliesRequests?.filter(r => r.status === 'approved' || r.status === 'completed').length || 0
+      };
+
+      // 2. Usuarios (clientes y operadores)
+      const { data: users, error: usersError } = await supabase
+        .from('profiles')
+        .select('role');
+
+      if (usersError) throw usersError;
+
+      const userStats = {
+        clients: users?.filter(u => u.role === 'user').length || 0,
+        operators: users?.filter(u => u.role === 'operador').length || 0,
+        total: users?.length || 0
+      };
+
+      // 3. Órdenes de servicio (tratamientos)
+      const { data: orders, error: ordersError } = await supabase
+        .from('service_orders')
+        .select('status, treatment_completed_at');
+
+      if (ordersError) throw ordersError;
+
+      const treatmentStats = {
+        total: orders?.length || 0,
+        active: orders?.filter(o => o.status === 'IN_PROGRESS' || o.status === 'ASSIGNED').length || 0,
+        completed: orders?.filter(o => o.treatment_completed_at !== null).length || 0
+      };
+
+      // 4. Planes
+      const { data: plans, error: plansError } = await supabase
+        .from('plans')
+        .select('status');
+
+      if (plansError) throw plansError;
+
+      const planStats = {
+        total: plans?.length || 0,
+        active: plans?.filter(p => p.status === 'ACTIVE').length || 0,
+        expired: plans?.filter(p => p.status === 'INACTIVE' || p.status === 'EXPIRED').length || 0
+      };
+
+      // 5. Certificados (basado en órdenes con certificados generados)
+      const certificateStats = {
+        total: orders?.filter(o => o.certificate_url !== null).length || 0,
+        valid: orders?.filter(o => o.certificate_url !== null).length || 0,
+        expired: 0 // Por ahora no hay lógica de expiración
+      };
+
+      // 6. Asignaciones (basado en órdenes con operador asignado)
+      const assignmentStats = {
+        total: orders?.length || 0,
+        pending: orders?.filter(o => o.status === 'PENDING' && o.operator_id === null).length || 0,
+        assigned: orders?.filter(o => o.operator_id !== null).length || 0
+      };
+
+      // 7. Incidencias
+      const { data: incidents, error: incidentsError } = await supabase
+        .from('incidents')
+        .select('status');
+
+      if (incidentsError) throw incidentsError;
+
+      const incidentStats = {
+        total: incidents?.length || 0,
+        open: incidents?.filter(i => i.status === 'OPEN' || i.status === 'IN_PROGRESS').length || 0,
+        resolved: incidents?.filter(i => i.status === 'RESOLVED' || i.status === 'CLOSED').length || 0
+      };
+
+      // 8. Configuración (planes de suscripción)
+      const { data: subscriptionPlans, error: subscriptionError } = await supabase
+        .from('subscription_plans')
+        .select('is_active');
+
+      if (subscriptionError) throw subscriptionError;
+
+      const configStats = {
+        total: subscriptionPlans?.length || 0,
+        active: subscriptionPlans?.filter(p => p.is_active === true).length || 0,
+        inactive: subscriptionPlans?.filter(p => p.is_active === false).length || 0
+      };
+
+      setStats({
+        suppliesRequests: suppliesStats,
+        treatments: treatmentStats,
+        certificates: certificateStats,
+        users: userStats,
+        assignments: assignmentStats,
+        incidents: incidentStats,
+        configuration: configStats,
+        plans: planStats
+      });
+
+    } catch (error) {
+      console.error('Error cargando estadísticas:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las estadísticas del dashboard",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
 
   const adminSections = [
     {
@@ -35,9 +173,9 @@ const AdminDashboardPage = () => {
       color: 'bg-red-500',
       href: '/mir/admin/supplies-requests',
       stats: {
-        total: '0',
-        pending: '0',
-        approved: '0'
+        total: stats.suppliesRequests.total,
+        pending: stats.suppliesRequests.pending,
+        approved: stats.suppliesRequests.approved
       }
     },
     {
@@ -47,9 +185,9 @@ const AdminDashboardPage = () => {
       color: 'bg-blue-500',
       href: '/mir/admin/tratamientos',
       stats: {
-        total: '0',
-        active: '0',
-        completed: '0'
+        total: stats.treatments.total,
+        active: stats.treatments.active,
+        completed: stats.treatments.completed
       }
     },
     {
@@ -59,9 +197,9 @@ const AdminDashboardPage = () => {
       color: 'bg-green-500',
       href: '/mir/admin/certificados',
       stats: {
-        total: '0',
-        valid: '0',
-        expired: '0'
+        total: stats.certificates.total,
+        valid: stats.certificates.valid,
+        expired: stats.certificates.expired
       }
     },
     {
@@ -71,9 +209,9 @@ const AdminDashboardPage = () => {
       color: 'bg-purple-500',
       href: '/mir/admin/clientes',
       stats: {
-        clients: '0',
-        operators: '0',
-        total: '0'
+        clients: stats.users.clients,
+        operators: stats.users.operators,
+        total: stats.users.total
       }
     },
     {
@@ -83,9 +221,9 @@ const AdminDashboardPage = () => {
       color: 'bg-yellow-500',
       href: '/mir/admin/asignaciones',
       stats: {
-        total: '0',
-        pending: '0',
-        assigned: '0'
+        total: stats.assignments.total,
+        pending: stats.assignments.pending,
+        assigned: stats.assignments.assigned
       }
     },
     {
@@ -95,9 +233,9 @@ const AdminDashboardPage = () => {
       color: 'bg-orange-500',
       href: '/mir/admin/incidencias',
       stats: {
-        total: '0',
-        open: '0',
-        resolved: '0'
+        total: stats.incidents.total,
+        open: stats.incidents.open,
+        resolved: stats.incidents.resolved
       }
     },
     {
@@ -107,9 +245,9 @@ const AdminDashboardPage = () => {
       color: 'bg-gray-500',
       href: '/mir/admin/settings',
       stats: {
-        total: '0',
-        active: '0',
-        inactive: '0'
+        total: stats.configuration.total,
+        active: stats.configuration.active,
+        inactive: stats.configuration.inactive
       }
     },
     {
@@ -119,9 +257,9 @@ const AdminDashboardPage = () => {
       color: 'bg-indigo-500',
       href: '/mir/admin/gestion-planes',
       stats: {
-        total: '0',
-        active: '0',
-        expired: '0'
+        total: stats.plans.total,
+        active: stats.plans.active,
+        expired: stats.plans.expired
       }
     }
   ];
@@ -165,29 +303,36 @@ const AdminDashboardPage = () => {
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {loading && (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+              <span className="ml-2 text-gray-600">Cargando estadísticas...</span>
+            </div>
+          )}
           {/* Welcome Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-6 text-white">
+            <div className="bg-white border-2 border-red-500 rounded-lg p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">
+                  <h2 className="text-2xl font-bold mb-2 text-red-600">
                     ¡Bienvenido al Panel de Administración!
                   </h2>
-                  <p className="text-red-100">
+                  <p className="text-gray-700">
                     Gestiona todas las operaciones del sistema desde aquí
                   </p>
                 </div>
-                <Calendar className="h-12 w-12 text-red-200" />
+                <Calendar className="h-12 w-12 text-red-500" />
               </div>
             </div>
           </motion.div>
 
           {/* Admin Sections Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {!loading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {adminSections.map((section, index) => (
               <motion.div
                 key={section.title}
@@ -229,15 +374,17 @@ const AdminDashboardPage = () => {
                 </Link>
               </motion.div>
             ))}
-          </div>
+            </div>
+          )}
 
           {/* Quick Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6"
-          >
+          {!loading && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+            >
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link to="/mir/admin/supplies-requests">
@@ -265,7 +412,8 @@ const AdminDashboardPage = () => {
                 </Button>
               </Link>
             </div>
-          </motion.div>
+            </motion.div>
+          )}
         </div>
       </div>
     </>

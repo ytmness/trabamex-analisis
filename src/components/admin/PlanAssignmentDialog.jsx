@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import supabase from '@/lib/customSupabaseClient';
@@ -10,25 +10,32 @@ const PlanAssignmentDialog = ({ isOpen, onClose, userId, userName, onPlanAssigne
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('');
+  const [selectedPlanType, setSelectedPlanType] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [showPlanSelection, setShowPlanSelection] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      fetchPlans();
+      // Resetear estado cuando se abre el dialog
+      setSelectedPlanType('');
+      setSelectedPlan('');
+      setShowPlanSelection(false);
     }
   }, [isOpen]);
 
-  const fetchPlans = async () => {
+  const fetchPlans = async (planType) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('subscription_plans')
         .select('*')
         .eq('is_active', true)
+        .eq('plan_type', planType)
         .order('monthly_price', { ascending: true });
 
       if (error) throw error;
       setPlans(data || []);
+      setShowPlanSelection(true);
     } catch (error) {
       console.error('Error fetching plans:', error);
       toast({
@@ -39,6 +46,11 @@ const PlanAssignmentDialog = ({ isOpen, onClose, userId, userName, onPlanAssigne
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePlanTypeSelection = async (planType) => {
+    setSelectedPlanType(planType);
+    await fetchPlans(planType);
   };
 
   const handleAssignPlan = async () => {
@@ -54,31 +66,24 @@ const PlanAssignmentDialog = ({ isOpen, onClose, userId, userName, onPlanAssigne
     try {
       setAssigning(true);
 
-      // Primero, desactivar TODOS los planes actuales del usuario (no solo ACTIVE)
-      const { error: deactivateError } = await supabase
-        .from('plans')
-        .update({ status: 'INACTIVE' })
-        .eq('customer_id', userId);
+      // Usar la función RPC para asignar adicional plan (sin desactivar otros)
+      const { data: result, error: assignError } = await supabase.rpc('assign_additional_plan_to_user', {
+        user_uuid: userId,
+        plan_name: selectedPlan
+      });
 
-      if (deactivateError) {
-        console.error('Error deactivating existing plans:', deactivateError);
-        throw deactivateError;
+      if (assignError) {
+        console.error('Error assigning additional plan:', assignError);
+        throw assignError;
       }
 
-      // Crear el nuevo plan
-      const { error: insertError } = await supabase
-        .from('plans')
-        .insert({
-          customer_id: userId,
-          name: selectedPlan,
-          status: 'ACTIVE',
-          start_date: new Date().toISOString(),
-          frequency: 'MONTHLY'
+      if (!result) {
+        toast({
+          variant: 'destructive',
+          title: 'Error al asignar plan',
+          description: 'El plan ya está asignado al usuario o no está disponible',
         });
-
-      if (insertError) {
-        console.error('Error inserting new plan:', insertError);
-        throw insertError;
+        return;
       }
 
       toast({
@@ -101,7 +106,15 @@ const PlanAssignmentDialog = ({ isOpen, onClose, userId, userName, onPlanAssigne
 
   const handleClose = () => {
     setSelectedPlan('');
+    setSelectedPlanType('');
+    setShowPlanSelection(false);
     onClose();
+  };
+
+  const handleBackToTypeSelection = () => {
+    setSelectedPlan('');
+    setSelectedPlanType('');
+    setShowPlanSelection(false);
   };
 
   return (
@@ -112,19 +125,90 @@ const PlanAssignmentDialog = ({ isOpen, onClose, userId, userName, onPlanAssigne
             <Package className="h-5 w-5" />
             Asignar Plan a {userName}
           </DialogTitle>
+          <DialogDescription>
+            Selecciona el tipo de plan que deseas asignar a este usuario.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center px-4 py-8">
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
               <span className="ml-2 text-gray-500">Cargando planes...</span>
             </div>
-          ) : (
+          ) : !showPlanSelection ? (
+            // Paso 1: Seleccionar tipo de plan
             <div className="space-y-3">
-              <p className="text-sm text-gray-600">
-                Selecciona un plan para asignar a este usuario:
-              </p>
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-900">Selecciona el tipo de plan:</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handlePlanTypeSelection('RPBI')}
+                    className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-colors text-left"
+                  >
+                    <span className="text-xl">🏥</span>
+                    <div>
+                      <div className="font-medium text-sm">RPBI</div>
+                      <div className="text-xs text-gray-500">Biológico-Infecciosos</div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => handlePlanTypeSelection('RP')}
+                    className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-colors text-left"
+                  >
+                    <span className="text-xl">⚗️</span>
+                    <div>
+                        <div className="font-medium text-sm">RP</div>
+                        <div className="text-xs text-gray-500">Peligrosos</div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => handlePlanTypeSelection('RME')}
+                    className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-colors text-left"
+                  >
+                    <span className="text-xl">🌱</span>
+                    <div>
+                        <div className="font-medium text-sm">RME</div>
+                        <div className="text-xs text-gray-500">Manejo Especial</div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => handlePlanTypeSelection('FISCAL')}
+                    className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-colors text-left"
+                  >
+                    <span className="text-xl">🔒</span>
+                    <div>
+                        <div className="font-medium text-sm">FISCAL</div>
+                        <div className="text-xs text-gray-500">Destrucción Fiscal</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Paso 2: Seleccionar plan específico
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                <button
+                  onClick={handleBackToTypeSelection}
+                  className="flex items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <span>←</span>
+                  <span className="text-sm">Volver</span>
+                </button>
+                <span className="text-lg">
+                  {selectedPlanType === 'RPBI' && '🏥'}
+                  {selectedPlanType === 'RP' && '⚗️'}
+                  {selectedPlanType === 'RME' && '🌱'}
+                  {selectedPlanType === 'FISCAL' && '🔒'}
+                </span>
+                <p className="text-sm text-gray-600">
+                  Planes disponibles para <strong>{selectedPlanType}</strong>:
+                </p>
+              </div>
               
               <div className="space-y-2">
                 {plans.map((plan) => (
@@ -167,7 +251,7 @@ const PlanAssignmentDialog = ({ isOpen, onClose, userId, userName, onPlanAssigne
             </Button>
             <Button
               onClick={handleAssignPlan}
-              disabled={!selectedPlan || assigning}
+              disabled={!selectedPlan || assigning || !showPlanSelection}
               className="bg-red-600 hover:bg-red-700"
             >
               {assigning ? (

@@ -47,22 +47,25 @@ const AdminClientsPage = () => {
   const fetchClients = async () => {
     setLoading(true);
     try {
-      console.log('🔄 Cargando clientes...');
+      console.log('🔄 Cargando usuarios...');
       
-      const { data, error } = await supabase.rpc('get_users_with_profiles_by_role', {
-        p_role: 'user'
-      });
+      // Obtener tanto clientes como operadores
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('role', ['user', 'operador'])
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error cargando clientes:', error);
+        console.error('❌ Error cargando usuarios:', error);
         toast({
           variant: 'destructive',
-          title: 'Error al cargar clientes',
+          title: 'Error al cargar usuarios',
           description: error.message,
         });
         setClients([]);
       } else {
-        console.log('✅ Clientes cargados:', data?.length || 0);
+        console.log('✅ Usuarios cargados:', data?.length || 0);
         setClients(data || []);
         
         // Calcular estadísticas
@@ -216,7 +219,7 @@ const AdminClientsPage = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-red-600 mx-auto" />
-          <p className="mt-2 text-gray-600">Cargando clientes...</p>
+          <p className="mt-2 text-gray-600">Cargando usuarios...</p>
         </div>
       </div>
     );
@@ -225,8 +228,8 @@ const AdminClientsPage = () => {
   return (
     <>
       <Helmet>
-        <title>Gestión de Clientes - Panel Admin</title>
-        <meta name="description" content="Administra los perfiles y datos de los clientes del sistema." />
+        <title>Gestión de Cuentas - Panel Admin</title>
+        <meta name="description" content="Administra los perfiles y datos de clientes y operadores del sistema." />
       </Helmet>
       
       <div className="min-h-screen bg-gray-50">
@@ -240,8 +243,8 @@ const AdminClientsPage = () => {
           >
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Gestión de Clientes</h1>
-                <p className="text-gray-600 mt-1">Administra los perfiles y datos de los clientes</p>
+                <h1 className="text-3xl font-bold text-gray-900">Gestión de Cuentas</h1>
+                <p className="text-gray-600 mt-1">Administra los perfiles y datos de clientes y operadores</p>
               </div>
               <div className="flex space-x-3">
                 <Button onClick={handleExport} variant="outline" className="flex items-center gap-2">
@@ -254,7 +257,7 @@ const AdminClientsPage = () => {
                 </Button>
                 <Button onClick={handleNew} className="bg-red-600 hover:bg-red-700 flex items-center gap-2">
                   <PlusCircle className="h-4 w-4" />
-                  Nuevo Cliente
+                  Nueva Cuenta
                 </Button>
               </div>
             </div>
@@ -271,7 +274,7 @@ const AdminClientsPage = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Clientes</p>
+                    <p className="text-sm font-medium text-gray-600">Total Usuarios</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                   </div>
                   <Users className="h-8 w-8 text-red-500" />
@@ -329,12 +332,12 @@ const AdminClientsPage = () => {
                   <Filter className="h-5 w-5 text-red-600" />
                   Filtros de Búsqueda
                 </CardTitle>
-                <CardDescription>Filtrar clientes por diferentes criterios</CardDescription>
+                <CardDescription>Filtrar usuarios por diferentes criterios</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Buscar Cliente</label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Buscar Usuario</label>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
@@ -401,12 +404,12 @@ const AdminClientsPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-red-600" />
-                  Lista de Clientes
+                  Lista de Usuarios
                 </CardTitle>
                 <CardDescription>
                   {searchTerm || statusFilter !== 'all' || dateFilter !== 'all' 
-                    ? `${filteredClients.length} clientes encontrados` 
-                    : `${stats.total} clientes registrados en el sistema`
+                    ? `${filteredClients.length} usuarios encontrados` 
+                    : `${stats.total} usuarios registrados en el sistema (clientes y operadores)`
                   }
                 </CardDescription>
               </CardHeader>
@@ -418,14 +421,14 @@ const AdminClientsPage = () => {
                     <Users className="mx-auto h-12 w-12 text-gray-400" />
                     <h3 className="mt-2 text-sm font-medium text-gray-900">
                       {searchTerm || statusFilter !== 'all' || dateFilter !== 'all' 
-                        ? 'No se encontraron clientes' 
-                        : 'No hay clientes registrados'
+                        ? 'No se encontraron usuarios' 
+                        : 'No hay usuarios registrados'
                       }
                     </h3>
                     <p className="mt-1 text-sm text-gray-500">
                       {searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
                         ? 'Intenta ajustar los filtros de búsqueda.'
-                        : 'Los nuevos clientes aparecerán aquí cuando se registren.'
+                        : 'Los nuevos usuarios aparecerán aquí cuando se registren.'
                       }
                     </p>
                   </div>
@@ -448,16 +451,17 @@ const AdminClientsPage = () => {
               <CardContent>
                 <div className="text-blue-800 space-y-2">
                   <p className="text-sm">
-                    <strong>Gestión de clientes:</strong>
+                    <strong>Gestión de cuentas:</strong>
                   </p>
                   <ul className="text-sm space-y-1 ml-4">
-                    <li>• <strong>👥 Clientes Activos:</strong> Usuarios con acceso completo al sistema</li>
-                    <li>• <strong>📧 Comunicación:</strong> Puedes contactar clientes directamente desde sus perfiles</li>
-                    <li>• <strong>📊 Estadísticas:</strong> Monitorea el crecimiento y actividad de clientes</li>
-                    <li>• <strong>🔍 Filtros:</strong> Busca clientes por nombre, empresa, estado o fecha de registro</li>
+                    <li>• <strong>👥 Usuarios Activos:</strong> Clientes y operadores con acceso al sistema</li>
+                    <li>• <strong>📧 Comunicación:</strong> Puedes contactar usuarios directamente desde sus perfiles</li>
+                    <li>• <strong>📊 Estadísticas:</strong> Monitorea el crecimiento y actividad de usuarios</li>
+                    <li>• <strong>🔍 Filtros:</strong> Busca usuarios por nombre, empresa, estado o fecha de registro</li>
+                    <li>• <strong>🚚 Operadores:</strong> Gestiona las cuentas de operadores para asignación de rutas</li>
                   </ul>
                   <p className="text-sm mt-3">
-                    <strong>Nota:</strong> Todos los cambios en los perfiles de clientes se reflejan inmediatamente en el sistema.
+                    <strong>Nota:</strong> Todos los cambios en los perfiles de usuarios se reflejan inmediatamente en el sistema.
                   </p>
                 </div>
               </CardContent>

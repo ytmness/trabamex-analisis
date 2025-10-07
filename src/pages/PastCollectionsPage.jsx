@@ -8,7 +8,6 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import supabase from '../lib/customSupabaseClient.js';
-import { downloadCertificate, downloadManifest } from '@/lib/certificateService';
 
 const PastCollectionsPage = () => {
     const { user, profile } = useAuth();
@@ -71,13 +70,67 @@ const PastCollectionsPage = () => {
 
     const handleDownloadCertificate = async (orderId) => {
         try {
-            await downloadCertificate(orderId);
+            // Obtener la URL del certificado directamente
+            const { data: order, error: orderError } = await supabase
+                .from('service_orders')
+                .select('certificate_url')
+                .eq('id', orderId)
+                .single();
+
+            if (orderError) {
+                throw new Error(`Error al obtener la orden: ${orderError.message}`);
+            }
+
+            if (!order.certificate_url) {
+                throw new Error('No se ha generado el certificado para esta orden');
+            }
+
+            console.log('URL del certificado:', order.certificate_url);
+
+            // Descargar el archivo
+            const response = await fetch(order.certificate_url);
+            
+            if (!response.ok) {
+                throw new Error(`Error al descargar: ${response.status} ${response.statusText}`);
+            }
+
+            const blob = await response.blob();
+            console.log('Tamaño del archivo descargado:', blob.size, 'bytes');
+            console.log('Tipo de archivo:', blob.type);
+
+            // Crear enlace de descarga
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // Determinar la extensión correcta basada en el tipo de archivo
+            let extension = 'pdf'; // Por defecto
+            if (blob.type.includes('image/png')) extension = 'png';
+            else if (blob.type.includes('image/jpeg') || blob.type.includes('image/jpg')) extension = 'jpg';
+            else if (blob.type.includes('image/gif')) extension = 'gif';
+            else if (blob.type.includes('application/pdf')) extension = 'pdf';
+            else if (blob.type.includes('application/msword')) extension = 'doc';
+            else if (blob.type.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) extension = 'docx';
+            else if (blob.type.includes('text/plain')) extension = 'txt';
+            else if (blob.type.includes('application/zip')) extension = 'zip';
+            
+            link.download = `Certificado_${orderId}.${extension}`;
+
+            // Simular clic para descargar
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Limpiar URL
+            window.URL.revokeObjectURL(url);
+
             toast({
                 title: "Descarga iniciada",
                 description: "El certificado se está descargando",
                 variant: "default"
             });
         } catch (error) {
+            console.error('Error descargando certificado:', error);
             toast({
                 title: "Error",
                 description: `No se pudo descargar el certificado: ${error.message}`,
@@ -88,13 +141,67 @@ const PastCollectionsPage = () => {
 
     const handleDownloadManifest = async (orderId) => {
         try {
-            await downloadManifest(orderId);
+            // Obtener la URL del manifiesto directamente
+            const { data: order, error: orderError } = await supabase
+                .from('service_orders')
+                .select('manifest_url')
+                .eq('id', orderId)
+                .single();
+
+            if (orderError) {
+                throw new Error(`Error al obtener la orden: ${orderError.message}`);
+            }
+
+            if (!order.manifest_url) {
+                throw new Error('No se ha generado el manifiesto para esta orden');
+            }
+
+            console.log('URL del manifiesto:', order.manifest_url);
+
+            // Descargar el archivo
+            const response = await fetch(order.manifest_url);
+            
+            if (!response.ok) {
+                throw new Error(`Error al descargar: ${response.status} ${response.statusText}`);
+            }
+
+            const blob = await response.blob();
+            console.log('Tamaño del archivo descargado:', blob.size, 'bytes');
+            console.log('Tipo de archivo:', blob.type);
+
+            // Crear enlace de descarga
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // Determinar la extensión correcta basada en el tipo de archivo
+            let extension = 'pdf'; // Por defecto
+            if (blob.type.includes('image/png')) extension = 'png';
+            else if (blob.type.includes('image/jpeg') || blob.type.includes('image/jpg')) extension = 'jpg';
+            else if (blob.type.includes('image/gif')) extension = 'gif';
+            else if (blob.type.includes('application/pdf')) extension = 'pdf';
+            else if (blob.type.includes('application/msword')) extension = 'doc';
+            else if (blob.type.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) extension = 'docx';
+            else if (blob.type.includes('text/plain')) extension = 'txt';
+            else if (blob.type.includes('application/zip')) extension = 'zip';
+            
+            link.download = `Manifiesto_${orderId}.${extension}`;
+
+            // Simular clic para descargar
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Limpiar URL
+            window.URL.revokeObjectURL(url);
+
             toast({
                 title: "Descarga iniciada",
                 description: "El manifiesto se está descargando",
                 variant: "default"
             });
         } catch (error) {
+            console.error('Error descargando manifiesto:', error);
             toast({
                 title: "Error",
                 description: `No se pudo descargar el manifiesto: ${error.message}`,

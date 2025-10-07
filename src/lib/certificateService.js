@@ -1,5 +1,5 @@
 import supabase from './customSupabaseClient.js';
-import { generateDestructionCertificate, generateManifest, cleanupTemporaryElements } from './certificateGenerator';
+import { generateDestructionCertificate, generateManifest } from './certificateGenerator';
 
 // Función para generar y almacenar un certificado de destrucción
 export const generateAndStoreCertificate = async (orderId) => {
@@ -73,9 +73,6 @@ export const generateAndStoreCertificate = async (orderId) => {
         metadata: { certificate_url: publicUrl }
       });
 
-    // 9. Limpiar elementos temporales
-    cleanupTemporaryElements();
-
     return {
       success: true,
       certificateUrl: publicUrl,
@@ -84,7 +81,6 @@ export const generateAndStoreCertificate = async (orderId) => {
 
   } catch (error) {
     console.error('Error generando certificado:', error);
-    cleanupTemporaryElements();
     throw error;
   }
 };
@@ -160,9 +156,6 @@ export const generateAndStoreManifest = async (orderId) => {
         metadata: { manifest_url: publicUrl }
       });
 
-    // 9. Limpiar elementos temporales
-    cleanupTemporaryElements();
-
     return {
       success: true,
       manifestUrl: publicUrl,
@@ -171,7 +164,6 @@ export const generateAndStoreManifest = async (orderId) => {
 
   } catch (error) {
     console.error('Error generando manifiesto:', error);
-    cleanupTemporaryElements();
     throw error;
   }
 };

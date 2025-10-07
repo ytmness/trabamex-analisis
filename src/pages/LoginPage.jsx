@@ -22,12 +22,11 @@ const LoginPage = () => {
             // Siempre usar el rol real del usuario, no el seleccionado manualmente
             const getUserRole = async () => {
                 try {
-                    // Usar la tabla user_roles en lugar de profiles
-                    const { data: userRole, error } = await supabase
-                        .from('user_roles')
+                    // Usar la tabla profiles para obtener el rol
+                    const { data: userProfile, error } = await supabase
+                        .from('profiles')
                         .select('role')
-                        .eq('user_id', user.id)
-                        .eq('is_active', true)
+                        .eq('id', user.id)
                         .single();
                     
                     if (error) {
@@ -37,8 +36,17 @@ const LoginPage = () => {
                         return;
                     }
                     
+                    // Mapear roles al formato de las rutas
+                    let roleRoute = 'user';
+                    if (userProfile.role === 'admin') {
+                        roleRoute = 'admin';
+                    } else if (userProfile.role === 'operador') {
+                        roleRoute = 'operador';
+                    }
+                    
                     // Redirigir al rol real del usuario
-                    navigate(`/mir/${userRole.role}`, { replace: true });
+                    console.log('Login exitoso, redirigiendo...');
+                    navigate(`/mir/${roleRoute}`, { replace: true });
                 } catch (error) {
                     console.error('Error obteniendo rol del usuario:', error);
                     // Fallback al rol por defecto

@@ -15,7 +15,6 @@ import {
   Users,
   Clock,
   ShieldCheck,
-  ArrowLeft,
 } from 'lucide-react';
 
 const services = [
@@ -78,23 +77,12 @@ const ServicesPage = () => {
         <meta name="description" content="Solicita servicios especializados para tu negocio: registros, capacitaciones, asesorías y más." />
       </Helmet>
       <div className="container mx-auto px-4 py-8">
-        {/* Botón de regresar al dashboard */}
-        <div className="mb-6">
-          <Button 
-            variant="outline" 
-            onClick={() => window.location.href = '/mir/user'}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Regresar al Dashboard
-          </Button>
-        </div>
         
         {/* Services Section */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <h1 className="text-3xl font-bold text-gray-800">Servicios Adicionales</h1>
-          <p className="text-lg text-gray-500 mt-1 mb-8">Solicita servicios especializados para tu negocio.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <h1 className="text-3xl font-bold text-trabamex-dark">Servicios Adicionales</h1>
+          <p className="text-lg text-trabamex-gray mt-1 mb-8">Solicita servicios especializados para tu negocio.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {services.map((service, index) => (
               <motion.div
                 key={index}
@@ -105,12 +93,12 @@ const ServicesPage = () => {
               >
                 <div>
                     <div className="mb-4">
-                        <service.icon className="h-8 w-8 text-red-600" />
+                        <service.icon className="h-8 w-8 text-trabamex-red" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">{service.title}</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed mb-4">{service.description}</p>
+                    <h3 className="text-xl font-bold text-trabamex-dark mb-2">{service.title}</h3>
+                    <p className="text-trabamex-gray text-sm leading-relaxed mb-4">{service.description}</p>
                 </div>
-                <Button onClick={() => handleRequestService(service.title)} className="w-full bg-red-600 hover:bg-red-700 mt-2">
+                <Button onClick={() => handleRequestService(service.title)} className="w-full bg-trabamex-red hover:bg-trabamex-red-dark mt-2">
                   Solicitar servicio
                 </Button>
               </motion.div>
@@ -125,14 +113,14 @@ const ServicesPage = () => {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="mt-12"
         >
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Mis Solicitudes de Servicio</h2>
+          <h2 className="text-2xl font-bold text-trabamex-dark mb-6">Mis Solicitudes de Servicio</h2>
           <div className="bg-white p-6 rounded-xl shadow-md border space-y-4">
             {serviceRequests.map((req, index) => (
               <div key={index} className={`p-4 rounded-lg flex items-start justify-between ${index < serviceRequests.length - 1 ? 'border-b' : ''}`}>
                 <div className="flex-grow">
-                    <h4 className="font-bold text-gray-800">{req.title}</h4>
-                    <p className="text-sm text-gray-600">{req.description}</p>
-                    <p className="text-xs text-gray-400 mt-1">{req.date}</p>
+                    <h4 className="font-bold text-trabamex-dark">{req.title}</h4>
+                    <p className="text-sm text-trabamex-gray">{req.description}</p>
+                    <p className="text-xs text-trabamex-gray-light mt-1">{req.date}</p>
                 </div>
                 <Badge variant={
                     req.status === 'Completado' ? 'success' : req.status === 'En proceso' ? 'warning' : 'secondary'
@@ -151,17 +139,17 @@ const ServicesPage = () => {
             transition={{ duration: 0.5, delay: 0.5 }}
             className="mt-12 bg-gray-50 p-8 rounded-xl"
         >
-            <h2 className="text-2xl text-center font-bold text-gray-800 mb-8">¿Por qué elegir nuestros servicios?</h2>
+            <h2 className="text-2xl text-center font-bold text-trabamex-dark mb-8">¿Por qué elegir nuestros servicios?</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
                 {whyChooseUs.map((item, index) => (
                     <div key={index}>
                         <div className="flex justify-center mb-3">
-                            <div className="bg-red-100 p-3 rounded-full">
-                                <item.icon className="h-6 w-6 text-red-600"/>
+                            <div className="bg-trabamex-red-light p-3 rounded-full">
+                                <item.icon className="h-6 w-6 text-trabamex-red"/>
                             </div>
                         </div>
-                        <h4 className="font-bold text-gray-800 mb-1">{item.title}</h4>
-                        <p className="text-sm text-gray-600">{item.description}</p>
+                        <h4 className="font-bold text-trabamex-dark mb-1">{item.title}</h4>
+                        <p className="text-sm text-trabamex-gray">{item.description}</p>
                     </div>
                 ))}
             </div>

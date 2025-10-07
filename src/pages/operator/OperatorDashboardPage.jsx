@@ -163,7 +163,7 @@ const OperatorDashboardPage = () => {
       
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         {/* Header */}
-        <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-xl p-8 text-white shadow-lg mb-8">
+        <div className="bg-white border-2 border-red-500 rounded-xl p-8 shadow-lg mb-8">
           <div className="container mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -172,19 +172,19 @@ const OperatorDashboardPage = () => {
               className="flex items-center justify-between"
             >
               <div>
-                <h1 className="text-4xl font-bold">
+                <h1 className="text-4xl font-bold text-red-600">
                   ¡Hola, {profile?.full_name || 'Operador'}!
                 </h1>
-                <p className="mt-2 text-red-100 text-lg">Gestiona rutas y estados de órdenes</p>
+                <p className="mt-2 text-gray-700 text-lg">Gestiona rutas y estados de órdenes</p>
               </div>
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-3 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-                  <Truck className="h-6 w-6 text-red-200" />
-                  <span className="text-white font-semibold text-sm">OPERADOR</span>
+                <div className="flex items-center space-x-3 bg-red-50 border border-red-200 px-4 py-2 rounded-lg">
+                  <Truck className="h-6 w-6 text-red-600" />
+                  <span className="text-red-600 font-semibold text-sm">OPERADOR</span>
                 </div>
                 <button
                   onClick={signOut}
-                  className="flex items-center space-x-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors backdrop-blur-sm"
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-md"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Cerrar Sesión</span>

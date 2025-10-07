@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { Button } from '../components/ui/button';
@@ -35,8 +35,13 @@ const RequestPage = () => {
         origin: '',
         date: '',
         packaging: '',
-        notes: ''
+        notes: '',
+        selectedPlan: '' // Nuevo campo para plan seleccionado
     });
+    
+    // Estado para planes del usuario
+    const [userPlans, setUserPlans] = useState([]);
+    const [loadingPlans, setLoadingPlans] = useState(true);
     
     // Estado de la descripción del residuo
     const [residueDescription, setResidueDescription] = useState('');
@@ -50,6 +55,41 @@ const RequestPage = () => {
     
     // Estado de errores
     const [errors, setErrors] = useState({});
+    
+    // Función para cargar planes del usuario
+    const fetchUserPlans = async () => {
+        if (!user?.id) return;
+        
+        try {
+            setLoadingPlans(true);
+            const { data: plans, error } = await supabase.rpc('get_user_plans', {
+                p_user_id: user.id
+            });
+            
+            if (error) throw error;
+            
+            setUserPlans(plans || []);
+            
+            // Si solo hay un plan, seleccionarlo automáticamente
+            if (plans && plans.length === 1) {
+                setFormData(prev => ({ ...prev, selectedPlan: plans[0].plan_id }));
+            }
+        } catch (error) {
+            console.error('Error al cargar planes:', error);
+            toast({
+                title: "Error",
+                description: "No se pudieron cargar los planes disponibles",
+                variant: "destructive"
+            });
+        } finally {
+            setLoadingPlans(false);
+        }
+    };
+    
+    // Cargar planes al montar el componente
+    useEffect(() => {
+        fetchUserPlans();
+    }, [user?.id]);
 
     // Validar formulario
     const validateForm = () => {
@@ -61,6 +101,7 @@ const RequestPage = () => {
         if (!formData.date) newErrors.date = 'Debes seleccionar una fecha';
         if (!formData.packaging) newErrors.packaging = 'Debes especificar el tipo de envasado';
         if (!residueDescription.trim()) newErrors.residueDescription = 'Debes describir el residuo';
+        if (!formData.selectedPlan) newErrors.selectedPlan = 'Debes seleccionar un plan';
         
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -172,20 +213,12 @@ const RequestPage = () => {
         console.log('🔧 LLAMANDO FUNCIÓN RPC create_service_order...');
         console.log('📡 URL de Supabase:', supabase.supabaseUrl);
         console.log('🔑 Usuario autenticado:', user?.id);
-        console.log('📊 Parámetros enviados:', {
-            p_residue_type: formData.residueType,
-            p_provider: formData.provider,
-            p_quantity: parseFloat(formData.quantity),
-            p_unit: formData.unit,
-            p_origin: formData.origin,
-            p_scheduled_date: formData.date,
-            p_packaging: formData.packaging,
-            p_notes: formData.notes,
-            p_waste_keys: [residueDescription],
-            p_evidence_files: fileUrls
-        });
         
-        const { data, error } = await supabase.rpc('create_service_order', {
+        // Obtener información del plan seleccionado
+        const selectedPlanObj = userPlans.find(plan => plan.plan_id === formData.selectedPlan);
+        console.log('📋 Plan seleccionado:', selectedPlanObj);
+        
+        const parameters = {
             p_residue_type: formData.residueType,
             p_provider: formData.provider,
             p_quantity: parseFloat(formData.quantity),
@@ -195,8 +228,14 @@ const RequestPage = () => {
             p_packaging: formData.packaging,
             p_notes: formData.notes,
             p_waste_keys: [residueDescription],
-            p_evidence_files: fileUrls
-        });
+            p_evidence_files: fileUrls,
+            p_plan_id: formData.selectedPlan, // Usar el plan seleccionado por el usuario
+            p_plan_type: selectedPlanObj?.plan_type || 'RPBI' // Tipo de plan del plan seleccionado
+        };
+        
+        console.log('📊 Parámetros enviados:', parameters);
+        
+        const { data, error } = await supabase.rpc('create_service_order', parameters);
         
         console.log('📥 Respuesta de Supabase:', { data, error });
         
@@ -214,7 +253,6 @@ const RequestPage = () => {
         console.log('✅ RPC exitoso, ID retornado:', data);
         return { id: data }; // La función RPC retorna solo el ID
     };
-
 
 
     // Enviar formulario
@@ -292,7 +330,8 @@ const RequestPage = () => {
                 origin: '',
                 date: '',
                 packaging: '',
-                notes: ''
+                notes: '',
+                selectedPlan: ''
             });
             setResidueDescription('');
             setFiles([]);
@@ -366,6 +405,41 @@ const RequestPage = () => {
                                     </SelectContent>
                                 </Select>
                                 {errors.residueType && <p className="text-red-500 text-sm mt-1">{errors.residueType}</p>}
+                            </div>
+                            <div>
+                                <Label htmlFor="selected-plan">Plan de cobro *</Label>
+                                <Select 
+                                    value={formData.selectedPlan} 
+                                    onValueChange={(value) => handleInputChange('selectedPlan', value)}
+                                    disabled={loadingPlans}
+                                >
+                                    <SelectTrigger id="selected-plan" className={errors.selectedPlan ? 'border-red-500' : ''}>
+                                        <SelectValue placeholder={loadingPlans ? "Cargando planes..." : "Selecciona un plan"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {userPlans.map(plan => (
+                                            <SelectItem key={plan.plan_id} value={plan.plan_id}>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{plan.plan_name}</span>
+                                                    <span className="text-sm text-gray-500">
+                                                        {plan.limit_kg} kg incluidos • ${plan.monthly_price}/mes
+                                                    </span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                        {userPlans.length === 0 && !loadingPlans && (
+                                            <SelectItem value="" disabled>
+                                                No tienes planes asignados
+                                            </SelectItem>
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                {errors.selectedPlan && <p className="text-red-500 text-sm mt-1">{errors.selectedPlan}</p>}
+                                {userPlans.length === 0 && !loadingPlans && (
+                                    <p className="text-sm text-orange-600 mt-1">
+                                        ⚠️ Consulta con el administrador sobre planes disponibles
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <Label htmlFor="provider">Proveedor del servicio</Label>

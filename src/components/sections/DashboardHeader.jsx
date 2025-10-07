@@ -19,7 +19,12 @@ import {
   ArrowLeft,
   Home,
   User,
-  Shield
+  Shield,
+  ClipboardList,
+  Calendar,
+  AlertTriangle,
+  History,
+  Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from "../ui/use-toast";
@@ -57,24 +62,23 @@ const DashboardHeader = () => {
     
     // Por ahora, usar rutas hardcodeadas basadas en la URL
     const currentPath = window.location.pathname;
-    let role = 'usuario';
+    let role = 'user';
     
     if (currentPath.includes('/admin')) {
       role = 'admin';
     } else if (currentPath.includes('/operador')) {
       role = 'operador';
     } else {
-      role = 'usuario';
+      role = 'user';
     }
     
     const base = `/mir/${role}`;
     
     const userLinks = [
       { to: base, text: 'Inicio', icon: LayoutDashboard },
-      { to: `${base}/solicitar`, text: 'Solicitar', icon: PlusCircle },
-      { to: `${base}/cronograma`, text: 'Cronograma', icon: FileText },
-      { to: `${base}/checklist`, text: 'Checklist', icon: FileText },
-      { to: `${base}/planes`, text: 'Planes', icon: FileText },
+      { to: `${base}/solicitar?tipo=recoleccion`, text: 'Solicitar', icon: PlusCircle },
+      { to: `${base}/cronograma`, text: 'Cronograma', icon: Calendar },
+      { to: `${base}/planes`, text: 'Planes', icon: Package },
       { to: `${base}/tracking`, text: 'Tracking', icon: Truck },
       { to: `${base}/servicios`, text: 'Servicios', icon: FileText },
     ];
@@ -85,18 +89,10 @@ const DashboardHeader = () => {
     
     const adminLinks = [
       { to: base, text: 'Dashboard', icon: LayoutDashboard, end: true },
-      { to: `${base}/tracking`, text: 'Tracking', icon: Truck },
-      { to: `${base}/clientes`, text: 'Clientes', icon: Users },
-      { to: `${base}/operadores`, text: 'Operadores', icon: UserCog },
-      { to: `${base}/ordenes`, text: 'Órdenes', icon: Package },
-      { to: `${base}/rutas`, text: 'Rutas', icon: Truck },
-      { to: `${base}/planes-admin`, text: 'Planes', icon: FileText },
-      { to: `${base}/tratamientos`, text: 'Tratamientos', icon: FlaskConical },
-      { to: `${base}/incidencias`, text: 'Incidencias', icon: ShieldAlert },
     ];
 
     switch (role) {
-      case 'usuario':
+      case 'user':
         return userLinks;
       case 'operador':
         return operatorLinks;
@@ -201,10 +197,10 @@ const DashboardHeader = () => {
             </div>
 
             <div className="flex items-center gap-4">
-               {user?.role === 'usuario' && (
+               {user?.role === 'user' && (
                 <div className="hidden sm:flex">
                     <Button asChild className="bg-red-600 hover:bg-red-700">
-                    <Link to={`/mir/${user?.role}/solicitar`}>
+                    <Link to={`/mir/${user?.role}/solicitar?tipo=recoleccion`}>
                         Solicitar recolección
                     </Link>
                     </Button>
@@ -236,9 +232,9 @@ const DashboardHeader = () => {
           >
             <div className="container mx-auto px-4 py-8 flex flex-col items-center space-y-6">
               <NavItems isMobile />
-              {user?.role === 'usuario' && (
+              {user?.role === 'user' && (
                 <Button asChild className="bg-red-600 hover:bg-red-700 w-full mt-4">
-                    <Link to={`/mir/${user?.role}/solicitar`} onClick={() => setIsMobileMenuOpen(false)}>
+                    <Link to={`/mir/${user?.role}/solicitar?tipo=recoleccion`} onClick={() => setIsMobileMenuOpen(false)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Solicitar recolección
                     </Link>

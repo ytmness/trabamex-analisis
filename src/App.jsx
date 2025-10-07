@@ -18,6 +18,7 @@ import SchedulePage from './pages/SchedulePage';
 import RequestPage from './pages/RequestPage';
 import PlansPage from './pages/PlansPage';
 import ChecklistPage from './pages/ChecklistPage';
+import CronogramaPage from './pages/CronogramaPage';
 import ContactPage from './pages/ContactPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import PastCollectionsPage from './pages/PastCollectionsPage';
@@ -47,6 +48,14 @@ import AdminSuppliesRequestDetailPage from './pages/admin/AdminSuppliesRequestDe
 import AdminPlanManagementPage from './pages/admin/AdminPlanManagementPage';
 import UserIncidentsPage from './pages/UserReportsPage';
 import NotificationsPage from './pages/NotificationsPage';
+import ProfilePage from './pages/ProfilePage';
+import RpPage from './pages/RpPage';
+import RpbiPage from './pages/RpbiPage';
+import RmePage from './pages/RmePage';
+import IncinerationPage from './pages/IncinerationPage';
+import FiscalDestructionPage from './pages/FiscalDestructionPage';
+import BlogPage from './pages/Blog';
+import BlogPostPage from './pages/BlogPostPage';
 import { useAuth } from './contexts/SupabaseAuthContext';
 
 // Componente que renderiza el dashboard correcto según el rol
@@ -92,6 +101,16 @@ function App() {
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
           <Route path="contacto" element={<ContactPage />} />
+          <Route path="rpbi" element={<RpbiPage />} />
+          <Route path="residuos-peligrosos" element={<RpPage />} />
+          <Route path="rme" element={<RmePage />} />
+          <Route path="incineracion" element={<IncinerationPage />} />
+          <Route path="destruccion-fiscal" element={<FiscalDestructionPage />} />
+          <Route path="blog" element={<BlogPage />} />
+          <Route path="blog/:slug" element={<BlogPostPage />} />
+          <Route path="residuos/rpbi" element={<Navigate to="/rpbi" replace />} />
+          <Route path="residuos/rp" element={<Navigate to="/residuos-peligrosos" replace />} />
+          <Route path="residuos/rme" element={<Navigate to="/rme" replace />} />
           <Route path="/mir/app" element={<Navigate to="/login" replace />} />
         </Route>
         
@@ -117,19 +136,9 @@ function App() {
           <Route path="gestion-planes" element={<ProtectedRoute allowedRoles={['admin']}><AdminPlanManagementPage /></ProtectedRoute>} />
           <Route path="asignaciones" element={<ProtectedRoute allowedRoles={['admin']}><AdminAssignmentsPage /></ProtectedRoute>} />
 
-          {/* Operator Routes */}
-          <Route path="rutas" element={<ProtectedRoute allowedRoles={['operator']}><OperatorRoutesPage /></ProtectedRoute>} />
-          <Route path="ordenes" element={<ProtectedRoute allowedRoles={['operator']}><OperatorOrdersPage /></ProtectedRoute>} />
-          <Route path="route/:routeId" element={<ProtectedRoute allowedRoles={['operator']}><OperatorRouteDetailPage /></ProtectedRoute>} />
-          <Route path="stop/:stopId" element={<ProtectedRoute allowedRoles={['operator']}><OperatorStopDetailPage /></ProtectedRoute>} />
-          <Route path="incident/new" element={<ProtectedRoute allowedRoles={['operator']}><OperatorIncidentPage /></ProtectedRoute>} />
-          <Route path="incidentes" element={<ProtectedRoute allowedRoles={['operator']}><OperatorIncidentsPage /></ProtectedRoute>} />
-          <Route path="checklist" element={<ProtectedRoute allowedRoles={['operator']}><OperatorChecklistPage /></ProtectedRoute>} />
-          <Route path="historial" element={<ProtectedRoute allowedRoles={['operator']}><OperatorHistoryPage /></ProtectedRoute>} />
-
-          {/* User Routes - MOVED LAST to avoid conflicts */}
+          {/* User Routes - MOVED FIRST to avoid conflicts */}
           <Route path="servicios" element={<ProtectedRoute allowedRoles={['user']}><ServicesPage /></ProtectedRoute>} />
-          <Route path="cronograma" element={<ProtectedRoute allowedRoles={['user']}><ServicesPage /></ProtectedRoute>} />
+          <Route path="cronograma" element={<ProtectedRoute allowedRoles={['user']}><CronogramaPage /></ProtectedRoute>} />
           <Route path="solicitar" element={<ProtectedRoute allowedRoles={['user']}><RequestPage /></ProtectedRoute>} />
           <Route path="planes" element={<ProtectedRoute allowedRoles={['user']}><PlansPage /></ProtectedRoute>} />
           <Route path="checklist" element={<ProtectedRoute allowedRoles={['user']}><ChecklistPage /></ProtectedRoute>} />
@@ -139,6 +148,17 @@ function App() {
           <Route path="notificaciones" element={<ProtectedRoute allowedRoles={['user']}><NotificationsPage /></ProtectedRoute>} />
           <Route path="historial" element={<ProtectedRoute allowedRoles={['user']}><PastCollectionsPage /></ProtectedRoute>} />
           <Route path="certificados" element={<ProtectedRoute allowedRoles={['user']}><CertificationsPage /></ProtectedRoute>} />
+          <Route path="perfil" element={<ProtectedRoute allowedRoles={['user']}><ProfilePage /></ProtectedRoute>} />
+
+          {/* Operator Routes */}
+          <Route path="rutas" element={<ProtectedRoute allowedRoles={['operator']}><OperatorRoutesPage /></ProtectedRoute>} />
+          <Route path="ordenes" element={<ProtectedRoute allowedRoles={['operator']}><OperatorOrdersPage /></ProtectedRoute>} />
+          <Route path="route/:routeId" element={<ProtectedRoute allowedRoles={['operator']}><OperatorRouteDetailPage /></ProtectedRoute>} />
+          <Route path="stop/:stopId" element={<ProtectedRoute allowedRoles={['operator']}><OperatorStopDetailPage /></ProtectedRoute>} />
+          <Route path="incident/new" element={<ProtectedRoute allowedRoles={['operator']}><OperatorIncidentPage /></ProtectedRoute>} />
+          <Route path="incidentes" element={<ProtectedRoute allowedRoles={['operator']}><OperatorIncidentsPage /></ProtectedRoute>} />
+          <Route path="checklist-operador" element={<ProtectedRoute allowedRoles={['operator']}><OperatorChecklistPage /></ProtectedRoute>} />
+          <Route path="historial-operador" element={<ProtectedRoute allowedRoles={['operator']}><OperatorHistoryPage /></ProtectedRoute>} />
         </Route>
 
         <Route path="/dashboard/*" element={<Navigate to="/login" replace />} />
